@@ -1,0 +1,129 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^u-(.*)": "uview-ui-next/components/u-$1/u-$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "即闪",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationBarBackgroundColor": "#FFF7F3"
+      }
+    },
+    {
+      "path": "pages/publish/index",
+      "style": {
+        "navigationBarTitleText": "发布内容"
+      }
+    },
+    {
+      "path": "pages/post-detail/index",
+      "style": {
+        "navigationBarTitleText": "内容详情"
+      }
+    },
+    {
+      "path": "pages/post-edit/index",
+      "style": {
+        "navigationBarTitleText": "编辑内容"
+      }
+    },
+    {
+      "path": "pages/edit-profile/index",
+      "style": {
+        "navigationBarTitleText": "编辑资料"
+      }
+    },
+    {
+      "path": "pages/bind-phone/index",
+      "style": {
+        "navigationBarTitleText": "绑定手机号"
+      }
+    },
+    {
+      "path": "pages/my-posts/index",
+      "style": {
+        "navigationBarTitleText": "我的发布"
+      }
+    },
+    {
+      "path": "pages/my-likes/index",
+      "style": {
+        "navigationBarTitleText": "我的点赞"
+      }
+    },
+    {
+      "path": "pages/my-comments/index",
+      "style": {
+        "navigationBarTitleText": "我的评论"
+      }
+    },
+    {
+      "path": "pages/my-shares/index",
+      "style": {
+        "navigationBarTitleText": "我的分享"
+      }
+    },
+    {
+      "path": "pages/messages/index",
+      "style": {
+        "navigationBarTitleText": "消息中心"
+      }
+    },
+    {
+      "path": "pages/privacy/index",
+      "style": {
+        "navigationBarTitleText": "隐私协议"
+      }
+    },
+    {
+      "path": "pages/user-agreement/index",
+      "style": {
+        "navigationBarTitleText": "用户协议"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#8E8A86",
+    "selectedColor": "#FF6B4A",
+    "backgroundColor": "#FFFDFB",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页",
+        "iconPath": "static/tabber/home.png",
+        "selectedIconPath": "static/tabber/home-selectd.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "static/tabber/my.png",
+        "selectedIconPath": "static/tabber/my-selectd.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "即闪",
+    "navigationBarBackgroundColor": "#FFF7F3",
+    "backgroundColor": "#F6F2EE"
+  }
+}

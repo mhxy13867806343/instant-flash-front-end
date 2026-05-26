@@ -1,0 +1,106 @@
+@import "./theme.scss";
+
+page {
+  min-height: 100%;
+  background: var(--page-bg);
+  color: var(--text-primary);
+  font-size: 28rpx;
+}
+
+view,
+text,
+button,
+input,
+textarea,
+image,
+scroll-view {
+  box-sizing: border-box;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  line-height: normal;
+}
+
+button::after {
+  border: 0;
+}
+
+.page-shell {
+  min-height: 100vh;
+  padding: 32rpx 28rpx 40rpx;
+}
+
+.card-shell {
+  background: var(--card-bg);
+  border: 1rpx solid rgba(235, 226, 218, 0.8);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+.section-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.section-desc {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-ghost {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 92rpx;
+  padding: 0 28rpx;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.btn-primary {
+  color: #fff;
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+  box-shadow: 0 18rpx 40rpx rgba(255, 107, 74, 0.24);
+}
+
+.btn-secondary {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1rpx solid var(--line-color);
+}
+
+.btn-ghost {
+  color: var(--brand-primary);
+  background: rgba(255, 107, 74, 0.08);
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  color: var(--brand-primary);
+  background: rgba(255, 107, 74, 0.1);
+}
+
+.muted-text {
+  color: var(--text-tertiary);
+}
+
+.safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 24rpx);
+}
