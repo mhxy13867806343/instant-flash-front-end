@@ -46,18 +46,37 @@
 
       <view class="card-shell publish-card">
         <view class="publish-card__head">
-          <text class="publish-card__title">图片区域</text>
-          <text class="publish-card__hint">演示版先保留占位，最多 3 张</text>
+          <text class="publish-card__title">媒体区域</text>
+          <text class="publish-card__hint">{{ mediaHint }}</text>
+        </view>
+        <view class="media-switch">
+          <button
+            v-for="item in mediaModes"
+            :key="item.value"
+            class="media-switch__item"
+            :class="{ 'media-switch__item--active': mediaType === item.value }"
+            @tap="mediaType = item.value"
+          >
+            {{ item.label }}
+          </button>
         </view>
         <view class="upload-grid">
-          <button v-for="item in uploadSlots" :key="item.id" class="upload-cell" @tap="pickImage(item.id)">
+          <button
+            v-for="item in mediaSlots"
+            :key="item.id"
+            class="upload-cell"
+            :class="{ 'upload-cell--video': mediaType === 'video' }"
+            @tap="pickMedia(item.id)"
+          >
             <template v-if="item.filled">
-              <view class="upload-cell__preview">{{ item.label }}</view>
-              <text class="upload-cell__action">重新选择</text>
+              <view class="upload-cell__preview" :class="{ 'upload-cell__preview--video': mediaType === 'video' }">
+                {{ item.label }}
+              </view>
+              <text class="upload-cell__action">{{ mediaType === "video" ? "替换视频" : "重新选择" }}</text>
             </template>
             <template v-else>
-              <u-icon name="plus" color="#FF6B4A" size="30" />
-              <text class="upload-cell__action">添加图片</text>
+              <u-icon :name="mediaType === 'video' ? 'play-right' : 'plus'" color="#FF6B4A" size="30" />
+              <text class="upload-cell__action">{{ mediaType === "video" ? "添加视频" : "添加图片" }}</text>
             </template>
           </button>
         </view>
@@ -94,19 +113,36 @@ import { computed, ref } from "vue";
 const content = ref("");
 const topics = ["同城发现", "灵感记录", "今日穿搭", "周末去哪"];
 const selectedTopics = ref<string[]>(["同城发现"]);
-const selectedImageIds = ref<number[]>([]);
+const mediaModes = [
+  { label: "图片", value: "image" },
+  { label: "视频", value: "video" },
+] as const;
+const mediaType = ref<(typeof mediaModes)[number]["value"]>("image");
+const selectedImages = ref<string[]>([]);
+const selectedVideo = ref("");
 
-const uploadSlots = computed(() =>
-  Array.from({ length: 3 }, (_, index) => {
-    const id = index + 1;
-    const filled = selectedImageIds.value.includes(id);
-    return {
-      id,
-      filled,
-      label: filled ? `图片 ${id}` : "",
-    };
-  })
+const mediaHint = computed(() =>
+  mediaType.value === "video" ? "支持 1 个视频，默认展示 1 个上传位" : "支持最多 9 张图片，默认展示 1 个上传位"
 );
+
+const mediaSlots = computed(() => {
+  if (mediaType.value === "video") {
+    return [
+      {
+        id: 1,
+        filled: Boolean(selectedVideo.value),
+        label: selectedVideo.value || "",
+      },
+    ];
+  }
+
+  const visibleCount = Math.min(Math.max(selectedImages.value.length + 1, 1), 9);
+  return Array.from({ length: visibleCount }, (_, index) => ({
+    id: index + 1,
+    filled: Boolean(selectedImages.value[index]),
+    label: selectedImages.value[index] || "",
+  }));
+});
 
 function toggleTopic(topic: string) {
   if (selectedTopics.value.includes(topic)) {
@@ -125,13 +161,45 @@ function toggleTopic(topic: string) {
   selectedTopics.value = [...selectedTopics.value, topic];
 }
 
-function pickImage(id: number) {
-  if (selectedImageIds.value.includes(id)) {
+function pickMedia(id: number) {
+  if (mediaType.value === "video") {
+    if (selectedVideo.value) {
+      uni.showActionSheet({
+        itemList: ["重新选择", "移除视频"],
+        success: ({ tapIndex }) => {
+          if (tapIndex === 1) {
+            selectedVideo.value = "";
+            uni.showToast({
+              title: "已移除视频",
+              icon: "none",
+            });
+            return;
+          }
+
+          selectedVideo.value = "视频 1";
+          uni.showToast({
+            title: "已更新视频",
+            icon: "none",
+          });
+        },
+      });
+      return;
+    }
+
+    selectedVideo.value = "视频 1";
+    uni.showToast({
+      title: "已添加视频",
+      icon: "none",
+    });
+    return;
+  }
+
+  if (selectedImages.value[id - 1]) {
     uni.showActionSheet({
       itemList: ["重新选择", "移除图片"],
       success: ({ tapIndex }) => {
         if (tapIndex === 1) {
-          selectedImageIds.value = selectedImageIds.value.filter((item) => item !== id);
+          selectedImages.value = selectedImages.value.filter((_, index) => index !== id - 1);
           uni.showToast({
             title: "已移除图片",
             icon: "none",
@@ -148,7 +216,9 @@ function pickImage(id: number) {
     return;
   }
 
-  selectedImageIds.value = [...selectedImageIds.value, id];
+  const nextImages = [...selectedImages.value];
+  nextImages[id - 1] = `图片 ${id}`;
+  selectedImages.value = nextImages.slice(0, 9);
   uni.showToast({
     title: `已添加图片 ${id}`,
     icon: "none",
@@ -272,6 +342,31 @@ function submit() {
   font-weight: 700;
 }
 
+.media-switch {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 8rpx;
+  border-radius: 999rpx;
+  background: #fff4ef;
+}
+
+.media-switch__item {
+  min-width: 112rpx;
+  height: 60rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  color: var(--text-secondary);
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.media-switch__item--active {
+  background: #fff;
+  color: var(--brand-primary);
+  box-shadow: 0 10rpx 18rpx rgba(255, 107, 74, 0.1);
+}
+
 .upload-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -292,6 +387,11 @@ function submit() {
   color: var(--text-secondary);
 }
 
+.upload-cell--video {
+  grid-column: 1 / -1;
+  min-height: 220rpx;
+}
+
 .upload-cell__preview {
   display: flex;
   align-items: center;
@@ -303,6 +403,11 @@ function submit() {
   font-size: 24rpx;
   font-weight: 700;
   color: #8a5543;
+}
+
+.upload-cell__preview--video {
+  min-height: 128rpx;
+  background: linear-gradient(135deg, #ffd8c8, #ffe8d8 48%, #fff4ec);
 }
 
 .upload-cell__action {
