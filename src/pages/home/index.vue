@@ -1,90 +1,219 @@
 <template>
-  <view class="page-shell safe-bottom home-page">
-    <view class="hero card-shell">
-      <view class="hero-top">
-        <view>
-          <text class="hero-title">即闪</text>
-          <text class="hero-subtitle">用更轻的方式，发现身边的即时灵感</text>
+  <view class="page-shell page-with-tabbar home-page">
+    <view class="home-page__sticky">
+      <view class="hero card-shell">
+        <view class="hero__top">
+          <view class="hero__copy">
+            <text class="hero__title">即闪</text>
+            <text class="hero__subtitle">看附近动态，即时灵感，和同频的人互动。</text>
+          </view>
+          <button class="hero__publish" @tap="goPublish">
+            <view class="hero__publish-icon">+</view>
+            <text class="hero__publish-label">发动态</text>
+          </button>
         </view>
-        <u-tag text="uView" type="warning" plain shape="circle" />
-      </view>
 
-      <u-search
-        v-model="keyword"
-        placeholder="搜索话题、内容、用户"
-        :show-action="false"
-        bg-color="#FFF7F3"
-        placeholder-color="#9B948E"
-      />
-
-      <view class="hero-actions">
-        <u-button type="primary" shape="circle" text="发布内容" />
-        <u-button color="#FFF1EA" shape="circle" text="查看热门" />
-      </view>
-    </view>
-
-    <view class="section-block">
-      <view class="section-head">
-        <text class="section-title">热门话题</text>
-        <text class="section-desc">先用组件搭出首页结构，后面再接真实数据。</text>
-      </view>
-      <view class="topic-row">
-        <u-tag
-          v-for="topic in topics"
-          :key="topic"
-          :text="topic"
-          plain
-          shape="circle"
-          type="primary"
+        <u-search
+          v-model="keyword"
+          placeholder="搜索动态、用户、地点"
+          :show-action="false"
+          bg-color="#FFF7F3"
+          placeholder-color="#9B948E"
         />
+
+        <view class="feed-switch">
+          <button
+            v-for="item in tabs"
+            :key="item"
+            class="feed-switch__item"
+            :class="{ 'feed-switch__item--active': activeTab === item }"
+            @tap="activeTab = item"
+          >
+            {{ item }}
+          </button>
+        </view>
+      </view>
+
+      <view class="feed-summary">
+        <view>
+          <text class="section-title">最新动态</text>
+          <text class="section-desc">点赞、评论、分享统一走 hooks 状态，首页和详情会同步。</text>
+        </view>
+        <text class="feed-summary__count">{{ filteredPosts.length }} 条内容</text>
       </view>
     </view>
 
     <view class="feed-list">
-      <view v-for="card in cards" :key="card.title" class="feed-card card-shell">
-        <view class="feed-card__meta">
-          <view>
-            <text class="feed-card__title">{{ card.title }}</text>
-            <text class="feed-card__desc">{{ card.desc }}</text>
-          </view>
-          <u-tag :text="card.badge" type="success" plain shape="circle" />
-        </view>
-        <view class="feed-card__footer">
-          <text class="feed-card__stats">{{ card.stats }}</text>
-          <u-button size="mini" type="primary" shape="circle" text="去看看" />
-        </view>
-      </view>
+      <post-card
+        v-for="post in filteredPosts"
+        :key="post.id"
+        :post="post"
+        @detail="goDetail"
+        @like="handleLike"
+        @comment="toggleComment"
+        @share="handleShare"
+      >
+        <feed-comment-panel
+          v-if="activeCommentId === post.id"
+          :post="post"
+          :draft="commentDraft"
+          :reply-target="replyTarget"
+          :show-emoji="emojiPanelId === post.id"
+          :emojis="emojis"
+          @reply="replyToComment(post.id, $event)"
+          @clear-reply="clearReply"
+          @update:draft="commentDraft = $event"
+          @toggle-emoji="toggleEmoji(post.id)"
+          @append-emoji="appendEmoji($event)"
+          @submit="submitComment(post.id)"
+        />
+      </post-card>
     </view>
+
+    <instant-tabbar current="home" />
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { onHide, onUnload } from "@dcloudio/uni-app";
+import FeedCommentPanel from "@/components/feed-comment-panel.vue";
+import InstantTabbar from "@/components/instant-tabbar.vue";
+import PostCard from "@/components/post-card.vue";
+import { useFeed } from "@/hooks/use-feed";
+import { useHomeFeed } from "@/hooks/use-home-feed";
 
-const keyword = ref("");
+const activeCommentId = ref("");
+const commentDraft = ref("");
+const replyTarget = ref("");
+const emojiPanelId = ref("");
+const emojis = ["😀", "😍", "👏", "🔥", "👍", "🥹", "🎉", "😄", "🤝", "💯"];
+const { posts, toggleLike, increaseShare, addComment } = useFeed();
+const { keyword, tabs, activeTab, filteredPosts } = useHomeFeed(posts);
 
-const topics = ["同城发现", "即时分享", "周末去哪", "校园灵感"];
+function goPublish() {
+  uni.navigateTo({
+    url: "/pages/publish/index",
+  });
+}
 
-const cards = [
-  {
-    title: "今晚附近有什么新鲜事",
-    desc: "基于当前位置，快速刷到身边正在发生的内容。",
-    badge: "推荐",
-    stats: "2.3k 浏览",
-  },
-  {
-    title: "把灵感用 30 秒发出去",
-    desc: "图文入口、快捷发布、轻互动，首页先把节奏感做出来。",
-    badge: "新功能",
-    stats: "128 条互动",
-  },
-  {
-    title: "个人内容也能被轻松看见",
-    desc: "后续会接点赞、评论、分享和个人主页联动。",
-    badge: "待联调",
-    stats: "持续迭代中",
-  },
-];
+function goDetail(id: string) {
+  uni.navigateTo({
+    url: `/pages/post-detail/index?id=${id}`,
+  });
+}
+
+function handleLike(id: string) {
+  const result = toggleLike(id);
+  uni.showToast({
+    title: result.liked ? "已点赞" : "已取消点赞",
+    icon: "none",
+  });
+}
+
+function toggleComment(id: string) {
+  if (activeCommentId.value === id) {
+    activeCommentId.value = "";
+    emojiPanelId.value = "";
+    return;
+  }
+
+  activeCommentId.value = id;
+  replyTarget.value = "";
+  emojiPanelId.value = "";
+}
+
+function submitComment(id: string) {
+  const content = commentDraft.value.trim();
+  if (!content) {
+    uni.showToast({
+      title: "先写点评论内容",
+      icon: "none",
+    });
+    return;
+  }
+
+  addComment(id, {
+    author: "当前用户",
+    content,
+    replyTo: replyTarget.value || undefined,
+  });
+  commentDraft.value = "";
+  replyTarget.value = "";
+  emojiPanelId.value = "";
+  uni.showToast({
+    title: "评论已发送",
+    icon: "none",
+  });
+}
+
+function handleShare(id: string) {
+  uni.showActionSheet({
+    itemList: ["转发给朋友", "复制链接", "生成海报"],
+    success: () => {
+      increaseShare(id);
+      uni.showToast({
+        title: "已分享",
+        icon: "none",
+      });
+    },
+  });
+}
+
+function replyToComment(postId: string, author: string) {
+  activeCommentId.value = postId;
+  replyTarget.value = author;
+}
+
+function clearReply() {
+  if (!replyTarget.value) {
+    return;
+  }
+
+  if (!commentDraft.value.trim()) {
+    replyTarget.value = "";
+    return;
+  }
+
+  uni.showModal({
+    title: "取消回复",
+    content: "当前已输入评论内容，确定只取消回复对象吗？评论内容会保留。",
+    confirmText: "确定",
+    cancelText: "继续回复",
+    success: ({ confirm }) => {
+      if (confirm) {
+        replyTarget.value = "";
+        uni.showToast({
+          title: "已取消回复对象",
+          icon: "none",
+        });
+      }
+    },
+  });
+}
+
+function toggleEmoji(postId: string) {
+  emojiPanelId.value = emojiPanelId.value === postId ? "" : postId;
+}
+
+function appendEmoji(emoji: string) {
+  commentDraft.value = `${commentDraft.value}${emoji}`;
+}
+
+function resetCommentDraft() {
+  activeCommentId.value = "";
+  commentDraft.value = "";
+  replyTarget.value = "";
+  emojiPanelId.value = "";
+}
+
+onHide(() => {
+  resetCommentDraft();
+});
+
+onUnload(() => {
+  resetCommentDraft();
+});
 </script>
 
 <style scoped lang="scss">
@@ -94,6 +223,16 @@ const cards = [
   gap: 24rpx;
 }
 
+.home-page__sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: -32rpx -28rpx 0;
+  padding: 32rpx 28rpx 16rpx;
+  background: rgba(246, 242, 238, 0.94);
+  backdrop-filter: blur(18px);
+}
+
 .hero {
   display: flex;
   flex-direction: column;
@@ -101,21 +240,26 @@ const cards = [
   padding: 32rpx 28rpx;
 }
 
-.hero-top {
+.hero__top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 24rpx;
 }
 
-.hero-title {
+.hero__copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.hero__title {
   display: block;
   font-size: 48rpx;
   font-weight: 700;
   color: var(--text-primary);
 }
 
-.hero-subtitle {
+.hero__subtitle {
   display: block;
   margin-top: 10rpx;
   font-size: 26rpx;
@@ -123,72 +267,79 @@ const cards = [
   color: var(--text-secondary);
 }
 
-.hero-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20rpx;
+.hero__publish {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+  height: 72rpx;
+  padding: 0 22rpx 0 14rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 107, 74, 0.08);
 }
 
-.section-block {
+.hero__publish-icon {
   display: flex;
-  flex-direction: column;
-  gap: 20rpx;
+  align-items: center;
+  justify-content: center;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+  color: #fff;
+  font-size: 34rpx;
+  line-height: 1;
 }
 
-.section-head {
-  padding: 0 8rpx;
+.hero__publish-label {
+  color: var(--brand-primary);
+  font-size: 24rpx;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.topic-row {
+.feed-switch {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 8rpx;
+  border-radius: 999rpx;
+  background: #fff4ef;
+}
+
+.feed-switch__item {
+  min-width: 116rpx;
+  height: 64rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  color: var(--text-secondary);
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.feed-switch__item--active {
+  background: #fff;
+  color: var(--brand-primary);
+  box-shadow: 0 12rpx 20rpx rgba(255, 107, 74, 0.1);
+}
+
+.feed-summary {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24rpx;
+  padding: 18rpx 8rpx 0;
+}
+
+.feed-summary__count {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  color: var(--text-tertiary);
 }
 
 .feed-list {
   display: flex;
   flex-direction: column;
   gap: 20rpx;
-}
-
-.feed-card {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
-  padding: 28rpx;
-}
-
-.feed-card__meta {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20rpx;
-}
-
-.feed-card__title {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.feed-card__desc {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 26rpx;
-  line-height: 1.7;
-  color: var(--text-secondary);
-}
-
-.feed-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20rpx;
-}
-
-.feed-card__stats {
-  font-size: 24rpx;
-  color: var(--text-tertiary);
 }
 </style>

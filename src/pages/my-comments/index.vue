@@ -1,42 +1,95 @@
 <template>
-  <view class="page">
-    <view class="card">
-      <text class="title">我的评论</text>
-      <text class="desc">我的评论页开发中</text>
+  <view class="page-shell my-comments-page">
+    <view class="card-shell my-comments-panel">
+      <text class="section-title">我的评论</text>
+      <text class="section-desc">这里汇总你参与过的评论互动，点击对应动态可继续回复。</text>
+    </view>
+
+    <view class="my-comments-list">
+      <button v-for="item in commentItems" :key="item.id" class="comment-row card-shell" @tap="goDetail(item.postId)">
+        <view class="comment-row__head">
+          <text class="comment-row__title">{{ item.postTitle }}</text>
+          <text class="comment-row__time">{{ item.time }}</text>
+        </view>
+        <text class="comment-row__content">{{ item.content }}</text>
+      </button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
+import { useFeed } from "@/hooks/use-feed";
+
+const { posts } = useFeed();
+
+const commentItems = computed(() =>
+  posts.value.flatMap((post) =>
+    post.commentList.slice(0, 2).map((comment) => ({
+      id: comment.id,
+      postId: post.id,
+      postTitle: post.content.slice(0, 22),
+      time: comment.time,
+      content: `${comment.replyTo ? `回复 @${comment.replyTo} ` : ""}${comment.content}`,
+    }))
+  )
+);
+
+function goDetail(id: string) {
+  uni.navigateTo({
+    url: `/pages/post-detail/index?id=${id}&focus=comment`,
+  });
+}
 </script>
 
 <style scoped lang="scss">
-.page {
-  min-height: 100vh;
-  padding: 48rpx 32rpx;
-  background: #f6f2ee;
-  box-sizing: border-box;
-}
-
-.card {
+.my-comments-page {
   display: flex;
   flex-direction: column;
+  gap: 24rpx;
+}
+
+.my-comments-panel {
+  padding: 32rpx 28rpx;
+}
+
+.my-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.comment-row {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  padding: 28rpx 24rpx;
+  text-align: left;
+}
+
+.comment-row__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 16rpx;
-  padding: 40rpx 32rpx;
-  border-radius: 24rpx;
-  background: #fffdfb;
-  box-shadow: 0 12rpx 40rpx rgba(34, 24, 20, 0.06);
 }
 
-.title {
-  font-size: 40rpx;
-  font-weight: 600;
-  color: #2f2622;
+.comment-row__title {
+  min-width: 0;
+  flex: 1;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
-.desc {
-  font-size: 28rpx;
-  line-height: 1.6;
-  color: #7a6d66;
+.comment-row__time {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+}
+
+.comment-row__content {
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: var(--text-secondary);
 }
 </style>

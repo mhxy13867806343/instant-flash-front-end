@@ -18,4 +18,10 @@ onHide(() => {
 @import "./uni.scss";
 @import "uview-ui-next/index.scss";
 @import "@/styles/common.scss";
+
+.uni-tabbar,
+.uni-tabbar-border,
+.uni-placeholder {
+  display: none !important;
+}
 </style>

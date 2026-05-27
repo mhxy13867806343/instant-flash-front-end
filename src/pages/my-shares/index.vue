@@ -1,42 +1,82 @@
 <template>
-  <view class="page">
-    <view class="card">
-      <text class="title">我的分享</text>
-      <text class="desc">我的分享页开发中</text>
+  <view class="page-shell my-shares-page">
+    <view class="card-shell my-shares-panel">
+      <text class="section-title">我的分享</text>
+      <text class="section-desc">这里展示被你转发过和分享热度较高的动态，分享数和首页详情保持同步。</text>
+    </view>
+
+    <view class="my-shares-list">
+      <button v-for="post in sharePosts" :key="post.id" class="share-row card-shell" @tap="goDetail(post.id)">
+        <view class="share-row__head">
+          <text class="share-row__author">{{ post.author }}</text>
+          <text class="share-row__count">已分享 {{ post.shares }} 次</text>
+        </view>
+        <text class="share-row__content">{{ post.content }}</text>
+      </button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
+import { useFeed } from "@/hooks/use-feed";
+
+const { posts } = useFeed();
+const sharePosts = computed(() => [...posts.value].sort((a, b) => b.shares - a.shares).slice(0, 3));
+
+function goDetail(id: string) {
+  uni.navigateTo({
+    url: `/pages/post-detail/index?id=${id}&focus=share`,
+  });
+}
 </script>
 
 <style scoped lang="scss">
-.page {
-  min-height: 100vh;
-  padding: 48rpx 32rpx;
-  background: #f6f2ee;
-  box-sizing: border-box;
-}
-
-.card {
+.my-shares-page {
   display: flex;
   flex-direction: column;
+  gap: 24rpx;
+}
+
+.my-shares-panel {
+  padding: 32rpx 28rpx;
+}
+
+.my-shares-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.share-row {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  padding: 28rpx 24rpx;
+  text-align: left;
+}
+
+.share-row__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 16rpx;
-  padding: 40rpx 32rpx;
-  border-radius: 24rpx;
-  background: #fffdfb;
-  box-shadow: 0 12rpx 40rpx rgba(34, 24, 20, 0.06);
 }
 
-.title {
-  font-size: 40rpx;
-  font-weight: 600;
-  color: #2f2622;
+.share-row__author {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
-.desc {
-  font-size: 28rpx;
-  line-height: 1.6;
-  color: #7a6d66;
+.share-row__count {
+  font-size: 22rpx;
+  color: var(--brand-primary);
+}
+
+.share-row__content {
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: var(--text-secondary);
 }
 </style>

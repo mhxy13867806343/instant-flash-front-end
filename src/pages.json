@@ -2,7 +2,12 @@
   "easycom": {
     "autoscan": true,
     "custom": {
-      "^u-(.*)": "uview-ui-next/components/u-$1/u-$1.vue"
+      "^u-(.*)": "uview-ui-next/components/u-$1/u-$1.vue",
+      "^z-paging$": "z-paging/components/z-paging/z-paging.vue",
+      "^z-paging-cell$": "z-paging/components/z-paging-cell/z-paging-cell.vue",
+      "^z-paging-empty-view$": "z-paging/components/z-paging-empty-view/z-paging-empty-view.vue",
+      "^z-paging-swiper$": "z-paging/components/z-paging-swiper/z-paging-swiper.vue",
+      "^z-paging-swiper-item$": "z-paging/components/z-paging-swiper-item/z-paging-swiper-item.vue"
     }
   },
   "pages": [
@@ -85,6 +90,12 @@
       "path": "pages/messages/index",
       "style": {
         "navigationBarTitleText": "消息中心"
+      }
+    },
+    {
+      "path": "pages/browse-history/index",
+      "style": {
+        "navigationBarTitleText": "浏览记录"
       }
     },
     {

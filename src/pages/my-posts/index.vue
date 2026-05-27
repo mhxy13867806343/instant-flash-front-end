@@ -1,42 +1,51 @@
 <template>
-  <view class="page">
-    <view class="card">
-      <text class="title">我的发布</text>
-      <text class="desc">我的发布页开发中</text>
+  <view class="page-shell my-posts-page">
+    <view class="card-shell my-posts-panel">
+      <text class="section-title">我的发布</text>
+      <text class="section-desc">这里展示当前账号发布过的动态，点击卡片可直接进入详情继续编辑内容。</text>
+    </view>
+
+    <view class="my-posts-list">
+      <post-card
+        v-for="post in myPosts"
+        :key="post.id"
+        :post="post"
+        :show-actions="false"
+        @detail="goDetail"
+      />
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
+import PostCard from "@/components/post-card.vue";
+import { useFeed } from "@/hooks/use-feed";
+
+const { posts } = useFeed();
+const myPosts = computed(() => posts.value.slice(0, 2));
+
+function goDetail(id: string) {
+  uni.navigateTo({
+    url: `/pages/post-detail/index?id=${id}`,
+  });
+}
 </script>
 
 <style scoped lang="scss">
-.page {
-  min-height: 100vh;
-  padding: 48rpx 32rpx;
-  background: #f6f2ee;
-  box-sizing: border-box;
-}
-
-.card {
+.my-posts-page {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
-  padding: 40rpx 32rpx;
-  border-radius: 24rpx;
-  background: #fffdfb;
-  box-shadow: 0 12rpx 40rpx rgba(34, 24, 20, 0.06);
+  gap: 24rpx;
 }
 
-.title {
-  font-size: 40rpx;
-  font-weight: 600;
-  color: #2f2622;
+.my-posts-panel {
+  padding: 32rpx 28rpx;
 }
 
-.desc {
-  font-size: 28rpx;
-  line-height: 1.6;
-  color: #7a6d66;
+.my-posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
 }
 </style>

@@ -1,42 +1,200 @@
 <template>
-  <view class="page">
-    <view class="card">
-      <text class="title">内容详情</text>
-      <text class="desc">内容详情页开发中</text>
+  <view class="page-shell detail-page">
+    <view class="card-shell detail-card">
+      <post-card
+        v-if="post"
+        :post="post"
+        mode="detail"
+        @like="handleLike"
+        @comment="scrollToComments"
+        @share="handleShare"
+      />
+      <view class="detail-note">
+        <text class="detail-note__title">动态详情</text>
+        <text class="detail-note__desc">这里和首页使用同一份动态状态，点赞、评论、分享和图片内容会实时同步。</text>
+      </view>
+    </view>
+
+    <view v-if="post" class="card-shell detail-comments">
+      <text class="section-title">评论区</text>
+      <text class="section-desc">{{ commentTip }}</text>
+      <feed-comment-panel
+        :post="post"
+        :draft="commentDraft"
+        :reply-target="replyTarget"
+        :show-emoji="showEmoji"
+        :emojis="emojis"
+        @reply="replyToComment"
+        @clear-reply="clearReply"
+        @update:draft="commentDraft = $event"
+        @toggle-emoji="toggleEmoji"
+        @append-emoji="appendEmoji"
+        @submit="submitComment"
+      />
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from "vue";
+import { onLoad } from "@dcloudio/uni-app";
+import FeedCommentPanel from "@/components/feed-comment-panel.vue";
+import PostCard from "@/components/post-card.vue";
+import { useFeed } from "@/hooks/use-feed";
+
+const postId = ref("post-001");
+const focusType = ref("");
+const commentDraft = ref("");
+const replyTarget = ref("");
+const showEmoji = ref(false);
+const emojis = ["😀", "😍", "👏", "🔥", "👍", "🥹", "🎉", "😄", "🤝", "💯"];
+const { posts, toggleLike, increaseShare, addComment, markBrowsed } = useFeed();
+
+const post = computed(() => posts.value.find((item) => item.id === postId.value) || null);
+
+const commentTip = computed(() => {
+  if (focusType.value === "comment") {
+    return "已从评论入口进入详情，可以直接回复或发表新的评论。";
+  }
+  if (focusType.value === "share") {
+    return "已从分享入口进入详情，这里的分享数会和首页保持同步。";
+  }
+  return "评论区和首页使用同一份评论数据，新增评论会直接同步回列表。";
+});
+
+onLoad((options) => {
+  postId.value = String(options?.id || "post-001");
+  focusType.value = String(options?.focus || "");
+  markBrowsed(postId.value);
+  if (focusType.value === "comment") {
+    scrollToComments();
+  }
+});
+
+function handleLike() {
+  const result = toggleLike(postId.value);
+  uni.showToast({
+    title: result.liked ? "已点赞" : "已取消点赞",
+    icon: "none",
+  });
+}
+
+function submitComment() {
+  const content = commentDraft.value.trim();
+  if (!content) {
+    uni.showToast({
+      title: "先写点评论内容",
+      icon: "none",
+    });
+    return;
+  }
+
+  addComment(postId.value, {
+    author: "当前用户",
+    content,
+    replyTo: replyTarget.value || undefined,
+  });
+  commentDraft.value = "";
+  replyTarget.value = "";
+  showEmoji.value = false;
+  uni.showToast({
+    title: "评论已发送",
+    icon: "none",
+  });
+}
+
+function handleShare() {
+  uni.showActionSheet({
+    itemList: ["转发给朋友", "复制链接", "生成海报"],
+    success: () => {
+      increaseShare(postId.value);
+      uni.showToast({
+        title: "已分享",
+        icon: "none",
+      });
+    },
+  });
+}
+
+function scrollToComments() {
+  uni.pageScrollTo({
+    selector: ".detail-comments",
+    duration: 260,
+  });
+}
+
+function replyToComment(author: string) {
+  replyTarget.value = author;
+}
+
+function clearReply() {
+  if (!replyTarget.value) {
+    return;
+  }
+
+  if (!commentDraft.value.trim()) {
+    replyTarget.value = "";
+    return;
+  }
+
+  uni.showModal({
+    title: "取消回复",
+    content: "当前已输入评论内容，确定只取消回复对象吗？评论内容会保留。",
+    confirmText: "确定",
+    cancelText: "继续回复",
+    success: ({ confirm }) => {
+      if (confirm) {
+        replyTarget.value = "";
+        uni.showToast({
+          title: "已取消回复对象",
+          icon: "none",
+        });
+      }
+    },
+  });
+}
+
+function toggleEmoji() {
+  showEmoji.value = !showEmoji.value;
+}
+
+function appendEmoji(emoji: string) {
+  commentDraft.value = `${commentDraft.value}${emoji}`;
+}
 </script>
 
 <style scoped lang="scss">
-.page {
-  min-height: 100vh;
-  padding: 48rpx 32rpx;
-  background: #f6f2ee;
-  box-sizing: border-box;
-}
-
-.card {
+.detail-page {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
-  padding: 40rpx 32rpx;
-  border-radius: 24rpx;
-  background: #fffdfb;
-  box-shadow: 0 12rpx 40rpx rgba(34, 24, 20, 0.06);
+  gap: 24rpx;
 }
 
-.title {
-  font-size: 40rpx;
-  font-weight: 600;
-  color: #2f2622;
+.detail-card,
+.detail-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  padding: 32rpx 28rpx;
 }
 
-.desc {
-  font-size: 28rpx;
-  line-height: 1.6;
-  color: #7a6d66;
+.detail-note {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid rgba(235, 226, 218, 0.9);
+}
+
+.detail-note__title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.detail-note__desc {
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: var(--text-secondary);
 }
 </style>

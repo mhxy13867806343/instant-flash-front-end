@@ -1,42 +1,51 @@
 <template>
-  <view class="page">
-    <view class="card">
-      <text class="title">我的点赞</text>
-      <text class="desc">我的点赞页开发中</text>
+  <view class="page-shell my-likes-page">
+    <view class="card-shell my-likes-panel">
+      <text class="section-title">我的点赞</text>
+      <text class="section-desc">这里会展示你点赞过的内容，首页或详情取消点赞后这里也会同步变化。</text>
+    </view>
+
+    <view class="my-likes-list">
+      <post-card
+        v-for="post in likedPosts"
+        :key="post.id"
+        :post="post"
+        :show-actions="false"
+        @detail="goDetail"
+      />
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
+import PostCard from "@/components/post-card.vue";
+import { useFeed } from "@/hooks/use-feed";
+
+const { posts } = useFeed();
+const likedPosts = computed(() => posts.value.filter((item) => item.liked));
+
+function goDetail(id: string) {
+  uni.navigateTo({
+    url: `/pages/post-detail/index?id=${id}`,
+  });
+}
 </script>
 
 <style scoped lang="scss">
-.page {
-  min-height: 100vh;
-  padding: 48rpx 32rpx;
-  background: #f6f2ee;
-  box-sizing: border-box;
-}
-
-.card {
+.my-likes-page {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
-  padding: 40rpx 32rpx;
-  border-radius: 24rpx;
-  background: #fffdfb;
-  box-shadow: 0 12rpx 40rpx rgba(34, 24, 20, 0.06);
+  gap: 24rpx;
 }
 
-.title {
-  font-size: 40rpx;
-  font-weight: 600;
-  color: #2f2622;
+.my-likes-panel {
+  padding: 32rpx 28rpx;
 }
 
-.desc {
-  font-size: 28rpx;
-  line-height: 1.6;
-  color: #7a6d66;
+.my-likes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
 }
 </style>
