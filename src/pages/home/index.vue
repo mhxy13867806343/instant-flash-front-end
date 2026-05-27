@@ -46,7 +46,6 @@
           <view class="feed-summary">
             <view>
               <text class="section-title">最新动态</text>
-              <text class="section-desc">首页列表已接入 z-paging，下拉刷新和上拉加载统一可用。</text>
             </view>
             <text class="feed-summary__count">{{ filteredPosts.length }} 条内容</text>
           </view>

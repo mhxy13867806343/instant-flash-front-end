@@ -2,7 +2,7 @@
   <view class="page-shell safe-bottom publish-page">
     <view class="card-shell publish-panel">
       <view class="publish-hero">
-        <view>
+        <view class="publish-hero__copy">
           <text class="section-title">发布动态</text>
           <text class="section-desc">把此刻的灵感、地点和氛围分享出去，首页会实时看到你的新内容。</text>
         </view>
@@ -89,14 +89,20 @@
           <text class="publish-card__hint">让内容更像真实动态</text>
         </view>
         <view class="publish-meta">
-          <view class="publish-meta__item">
+          <button class="publish-meta__item" @tap="selectLocation">
             <text class="publish-meta__label">发布位置</text>
-            <text class="publish-meta__value">杭州·滨江天街</text>
-          </view>
-          <view class="publish-meta__item">
+            <view class="publish-meta__value-wrap">
+              <text class="publish-meta__value">{{ location }}</text>
+              <u-icon name="arrow-right" color="#9B948E" size="20" />
+            </view>
+          </button>
+          <button class="publish-meta__item" @tap="selectVisibility">
             <text class="publish-meta__label">可见范围</text>
-            <text class="publish-meta__value">公开</text>
-          </view>
+            <view class="publish-meta__value-wrap">
+              <text class="publish-meta__value">{{ visibility }}</text>
+              <u-icon name="arrow-right" color="#9B948E" size="20" />
+            </view>
+          </button>
         </view>
       </view>
     </view>
@@ -136,6 +142,10 @@ const topics = recommendedTopicOptions;
 const selectedTopics = ref<string[]>(["同城发现"]);
 const mediaItems = ref<MediaItem[]>([]);
 const nextMediaId = ref(1);
+const locationOptions = ["杭州·滨江天街", "杭州·湖滨银泰", "杭州·运河天地", "上海·新天地"];
+const visibilityOptions = ["公开", "仅好友可见", "仅自己可见"];
+const location = ref(locationOptions[0]);
+const visibility = ref(visibilityOptions[0]);
 
 const videoCount = computed(() => mediaItems.value.filter((item) => item.type === "video").length);
 const imageCount = computed(() => mediaItems.value.filter((item) => item.type === "image").length);
@@ -364,6 +374,32 @@ function saveDraft() {
   });
 }
 
+function selectLocation() {
+  uni.showActionSheet({
+    itemList: locationOptions,
+    success: ({ tapIndex }) => {
+      location.value = locationOptions[tapIndex] || location.value;
+      uni.showToast({
+        title: `已切换到${location.value}`,
+        icon: "none",
+      });
+    },
+  });
+}
+
+function selectVisibility() {
+  uni.showActionSheet({
+    itemList: visibilityOptions,
+    success: ({ tapIndex }) => {
+      visibility.value = visibilityOptions[tapIndex] || visibility.value;
+      uni.showToast({
+        title: `已设置为${visibility.value}`,
+        icon: "none",
+      });
+    },
+  });
+}
+
 function submit() {
   if (!content.value.trim()) {
     uni.showToast({
@@ -400,7 +436,18 @@ function submit() {
   gap: 24rpx;
 }
 
+.publish-hero__copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.publish-hero__copy .section-title,
+.publish-hero__copy .section-desc {
+  display: block;
+}
+
 .publish-hero__badge {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -572,14 +619,22 @@ function submit() {
   align-items: center;
   justify-content: space-between;
   gap: 24rpx;
+  width: 100%;
   padding: 18rpx 20rpx;
   border-radius: 20rpx;
   background: #fff7f3;
+  text-align: left;
 }
 
 .publish-meta__label {
   font-size: 24rpx;
   color: var(--text-secondary);
+}
+
+.publish-meta__value-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
 }
 
 .publish-meta__value {

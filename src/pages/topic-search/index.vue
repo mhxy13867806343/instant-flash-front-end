@@ -159,8 +159,8 @@ function handleTopicTap(topic: string) {
   }
 
   if (selectMode.value) {
-    const eventChannel = getOpenerEventChannel();
-    eventChannel.emit("topic-selected", {
+    const eventChannel = uni.getOpenerEventChannel?.();
+    eventChannel?.emit("topic-selected", {
       topic: normalizedTopic,
     });
     uni.navigateBack();
