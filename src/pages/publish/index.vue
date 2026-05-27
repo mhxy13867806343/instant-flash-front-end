@@ -49,34 +49,27 @@
           <text class="publish-card__title">媒体区域</text>
           <text class="publish-card__hint">{{ mediaHint }}</text>
         </view>
-        <view class="media-switch">
-          <button
-            v-for="item in mediaModes"
-            :key="item.value"
-            class="media-switch__item"
-            :class="{ 'media-switch__item--active': mediaType === item.value }"
-            @tap="mediaType = item.value"
-          >
-            {{ item.label }}
-          </button>
-        </view>
         <view class="upload-grid">
           <button
             v-for="item in mediaSlots"
             :key="item.id"
             class="upload-cell"
-            :class="{ 'upload-cell--video': mediaType === 'video' }"
-            @tap="pickMedia(item.id)"
+            :class="{
+              'upload-cell--video': item.type === 'video',
+              'upload-cell--add': item.type === 'add',
+            }"
+            @tap="handleMediaCellTap(item)"
           >
-            <template v-if="item.filled">
-              <view class="upload-cell__preview" :class="{ 'upload-cell__preview--video': mediaType === 'video' }">
+            <template v-if="item.type !== 'add'">
+              <view class="upload-cell__preview" :class="{ 'upload-cell__preview--video': item.type === 'video' }">
                 {{ item.label }}
               </view>
-              <text class="upload-cell__action">{{ mediaType === "video" ? "替换视频" : "重新选择" }}</text>
+              <text class="upload-cell__action">{{ item.type === "video" ? "替换视频" : "重新选择" }}</text>
             </template>
             <template v-else>
-              <u-icon :name="mediaType === 'video' ? 'play-right' : 'plus'" color="#FF6B4A" size="30" />
-              <text class="upload-cell__action">{{ mediaType === "video" ? "添加视频" : "添加图片" }}</text>
+              <u-icon name="plus" color="#FF6B4A" size="30" />
+              <text class="upload-cell__action">添加图片 / 视频</text>
+              <text class="upload-cell__meta">{{ addSlotMeta }}</text>
             </template>
           </button>
         </view>
@@ -110,38 +103,43 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 
+type MediaItem = {
+  id: number;
+  type: "image" | "video";
+  label: string;
+};
+
+type MediaSlot =
+  | MediaItem
+  | {
+      id: string;
+      type: "add";
+    };
+
 const content = ref("");
 const topics = ["同城发现", "灵感记录", "今日穿搭", "周末去哪"];
 const selectedTopics = ref<string[]>(["同城发现"]);
-const mediaModes = [
-  { label: "图片", value: "image" },
-  { label: "视频", value: "video" },
-] as const;
-const mediaType = ref<(typeof mediaModes)[number]["value"]>("image");
-const selectedImages = ref<string[]>([]);
-const selectedVideo = ref("");
+const mediaItems = ref<MediaItem[]>([]);
+const nextMediaId = ref(1);
 
-const mediaHint = computed(() =>
-  mediaType.value === "video" ? "支持 1 个视频，默认展示 1 个上传位" : "支持最多 9 张图片，默认展示 1 个上传位"
+const hasVideo = computed(() => mediaItems.value.some((item) => item.type === "video"));
+const imageCount = computed(() => mediaItems.value.filter((item) => item.type === "image").length);
+const mediaHint = computed(() => `支持最多 9 个媒体，可带 1 个视频，默认展示 1 个上传位`);
+const addSlotMeta = computed(() =>
+  hasVideo.value ? `已选 ${imageCount.value} 张图片 / 1 个视频` : `已选 ${imageCount.value} 张图片`
 );
 
-const mediaSlots = computed(() => {
-  if (mediaType.value === "video") {
-    return [
-      {
-        id: 1,
-        filled: Boolean(selectedVideo.value),
-        label: selectedVideo.value || "",
-      },
-    ];
+const mediaSlots = computed<MediaSlot[]>(() => {
+  const slots: MediaSlot[] = [...mediaItems.value];
+
+  if (mediaItems.value.length < 9) {
+    slots.push({
+      id: "add-slot",
+      type: "add",
+    });
   }
 
-  const visibleCount = Math.min(Math.max(selectedImages.value.length + 1, 1), 9);
-  return Array.from({ length: visibleCount }, (_, index) => ({
-    id: index + 1,
-    filled: Boolean(selectedImages.value[index]),
-    label: selectedImages.value[index] || "",
-  }));
+  return slots;
 });
 
 function toggleTopic(topic: string) {
@@ -161,67 +159,75 @@ function toggleTopic(topic: string) {
   selectedTopics.value = [...selectedTopics.value, topic];
 }
 
-function pickMedia(id: number) {
-  if (mediaType.value === "video") {
-    if (selectedVideo.value) {
-      uni.showActionSheet({
-        itemList: ["重新选择", "移除视频"],
-        success: ({ tapIndex }) => {
-          if (tapIndex === 1) {
-            selectedVideo.value = "";
-            uni.showToast({
-              title: "已移除视频",
-              icon: "none",
-            });
-            return;
-          }
-
-          selectedVideo.value = "视频 1";
-          uni.showToast({
-            title: "已更新视频",
-            icon: "none",
-          });
-        },
-      });
-      return;
-    }
-
-    selectedVideo.value = "视频 1";
+function addMedia(type: "image" | "video") {
+  if (mediaItems.value.length >= 9) {
     uni.showToast({
-      title: "已添加视频",
+      title: "最多添加 9 个媒体",
       icon: "none",
     });
     return;
   }
 
-  if (selectedImages.value[id - 1]) {
+  if (type === "video" && hasVideo.value) {
+    uni.showToast({
+      title: "最多只能添加 1 个视频",
+      icon: "none",
+    });
+    return;
+  }
+
+  const id = nextMediaId.value++;
+  mediaItems.value = [
+    ...mediaItems.value,
+    {
+      id,
+      type,
+      label: type === "video" ? `视频 ${id}` : `图片 ${id}`,
+    },
+  ];
+  uni.showToast({
+    title: type === "video" ? "已添加视频" : "已添加图片",
+    icon: "none",
+  });
+}
+
+function handleMediaCellTap(item: MediaSlot) {
+  if (item.type === "add") {
+    const itemList = hasVideo.value ? ["添加图片"] : ["添加图片", "添加视频"];
     uni.showActionSheet({
-      itemList: ["重新选择", "移除图片"],
+      itemList,
       success: ({ tapIndex }) => {
-        if (tapIndex === 1) {
-          selectedImages.value = selectedImages.value.filter((_, index) => index !== id - 1);
-          uni.showToast({
-            title: "已移除图片",
-            icon: "none",
-          });
+        if (itemList[tapIndex] === "添加视频") {
+          addMedia("video");
           return;
         }
 
-        uni.showToast({
-          title: `已更新图片 ${id}`,
-          icon: "none",
-        });
+        addMedia("image");
       },
     });
     return;
   }
 
-  const nextImages = [...selectedImages.value];
-  nextImages[id - 1] = `图片 ${id}`;
-  selectedImages.value = nextImages.slice(0, 9);
-  uni.showToast({
-    title: `已添加图片 ${id}`,
-    icon: "none",
+  uni.showActionSheet({
+    itemList: item.type === "video" ? ["替换视频", "移除视频"] : ["重新选择", "移除图片"],
+    success: ({ tapIndex }) => {
+      if (tapIndex === 1) {
+        mediaItems.value = mediaItems.value.filter((media) => media.id !== item.id);
+        uni.showToast({
+          title: item.type === "video" ? "已移除视频" : "已移除图片",
+          icon: "none",
+        });
+        return;
+      }
+
+      mediaItems.value = mediaItems.value.map((media) =>
+        media.id === item.id ? { ...media, label: media.type === "video" ? `视频 ${media.id}` : `图片 ${media.id}` } : media
+      );
+      uni.showToast({
+        title: item.type === "video" ? "已更新视频" : "已更新图片",
+        icon: "none",
+      });
+    },
   });
 }
 
@@ -342,31 +348,6 @@ function submit() {
   font-weight: 700;
 }
 
-.media-switch {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  padding: 8rpx;
-  border-radius: 999rpx;
-  background: #fff4ef;
-}
-
-.media-switch__item {
-  min-width: 112rpx;
-  height: 60rpx;
-  padding: 0 20rpx;
-  border-radius: 999rpx;
-  color: var(--text-secondary);
-  font-size: 24rpx;
-  font-weight: 600;
-}
-
-.media-switch__item--active {
-  background: #fff;
-  color: var(--brand-primary);
-  box-shadow: 0 10rpx 18rpx rgba(255, 107, 74, 0.1);
-}
-
 .upload-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -387,9 +368,13 @@ function submit() {
   color: var(--text-secondary);
 }
 
+.upload-cell--add {
+  justify-content: center;
+}
+
 .upload-cell--video {
-  grid-column: 1 / -1;
-  min-height: 220rpx;
+  grid-column: span 2;
+  min-height: 188rpx;
 }
 
 .upload-cell__preview {
@@ -412,6 +397,11 @@ function submit() {
 
 .upload-cell__action {
   font-size: 22rpx;
+}
+
+.upload-cell__meta {
+  font-size: 20rpx;
+  color: var(--text-tertiary);
 }
 
 .publish-meta {
