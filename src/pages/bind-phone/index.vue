@@ -63,6 +63,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
+import { isValidMobilePhone, maskMobilePhone, sanitizeMobilePhone } from "@/utils/phone";
 
 const form = reactive({
   phone: "",
@@ -70,7 +71,7 @@ const form = reactive({
 });
 
 const originalPhone = "13800138000";
-const currentPhoneMask = computed(() => `${originalPhone.slice(0, 3)}****${originalPhone.slice(-4)}`);
+const currentPhoneMask = computed(() => maskMobilePhone(originalPhone));
 const codeRef = ref<{ start: () => void; reset: () => void } | null>(null);
 const codeTips = ref("获取验证码");
 const counting = ref(false);
@@ -83,7 +84,7 @@ const inputStyle = {
   backgroundColor: "#FFF7F3",
 };
 
-const isValidPhone = computed(() => /^1[3-9]\d{9}$/.test(form.phone));
+const isValidPhone = computed(() => isValidMobilePhone(form.phone));
 const canSubmit = computed(() => isValidPhone.value && form.code.trim().length > 0 && form.phone === lastSentPhone.value);
 const codeButtonStyle = computed(() => ({
   width: "220rpx",
@@ -104,7 +105,7 @@ const submitButtonStyle = computed(() => ({
 }));
 
 function sanitizePhone(value: string) {
-  form.phone = value.replace(/\D/g, "").slice(0, 11);
+  form.phone = sanitizeMobilePhone(value);
 }
 
 function validatePhone() {

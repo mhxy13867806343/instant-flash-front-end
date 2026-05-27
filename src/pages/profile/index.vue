@@ -3,22 +3,29 @@
     <view class="profile-card card-shell">
       <view class="profile-card__main">
         <button class="profile-card__avatar" @tap="editAvatar">
-          <text class="profile-card__avatar-text">即</text>
+          <text class="profile-card__avatar-text">{{ profile.avatarText }}</text>
         </button>
         <view class="profile-card__info">
-          <text class="profile-card__name">即闪用户</text>
+          <text class="profile-card__name">{{ displayName }}</text>
           <view class="profile-card__tags">
-            <text class="profile-card__tag profile-card__tag--success">已登录</text>
-            <text class="profile-card__tag profile-card__tag--primary">创作者</text>
-            <text class="profile-card__tag profile-card__tag--warning">已绑定手机号</text>
+            <text class="profile-card__tag" :class="isLoggedIn ? 'profile-card__tag--success' : 'profile-card__tag--muted'">
+              {{ isLoggedIn ? "已登录" : "未登录" }}
+            </text>
+            <text v-if="isLoggedIn" class="profile-card__tag profile-card__tag--primary">创作者</text>
+            <text v-if="displayPhone" class="profile-card__tag profile-card__tag--warning">{{ displayPhone }}</text>
           </view>
-          <text class="profile-card__desc">记录生活灵感，分享此刻想表达的内容，也收集身边值得被看见的动态。</text>
+          <text class="profile-card__desc">{{ profileDesc }}</text>
         </view>
       </view>
       <view class="profile-card__actions">
-        <button class="profile-card__action profile-card__action--primary" @tap="go('/pages/edit-profile/index')">编辑资料</button>
-        <button class="profile-card__action profile-card__action--secondary" @tap="go('/pages/bind-phone/index')">绑定手机</button>
+        <button class="profile-card__action profile-card__action--primary" @tap="handlePrimaryAction">
+          {{ isLoggedIn ? "编辑资料" : "去登录" }}
+        </button>
+        <button class="profile-card__action profile-card__action--secondary" @tap="handleSecondaryAction">
+          {{ isLoggedIn ? "绑定手机" : "看看登录页" }}
+        </button>
       </view>
+      <button v-if="isLoggedIn" class="profile-card__logout" @tap="handleLogout">退出登录</button>
     </view>
 
     <view class="stat-grid">
@@ -47,7 +54,7 @@
           :label="item.desc"
           :value="item.value"
           is-link
-          @click="go(item.path)"
+          @click="go(item.path, item.requiresLogin)"
         />
       </u-cell-group>
     </view>
@@ -59,10 +66,18 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import InstantTabbar from "@/components/instant-tabbar.vue";
+import { useAuth } from "@/hooks/use-auth";
 import { useFeed } from "@/hooks/use-feed";
 import { formatCount } from "@/utils/number";
 
 const { posts, historyPosts } = useFeed();
+const { isLoggedIn, profile, displayName, displayPhone, logout, openLoginPage, ensureLogin } = useAuth();
+
+const profileDesc = computed(() =>
+  isLoggedIn.value
+    ? "记录生活灵感，分享此刻想表达的内容，也收集身边值得被看见的动态。"
+    : "登录后可以发布动态、管理互动记录，也能同步你的浏览和评论草稿。"
+);
 
 const stats = computed(() => [
   { label: "我的发布", value: formatCount(12), path: "/pages/my-posts/index" },
@@ -72,21 +87,61 @@ const stats = computed(() => [
 ]);
 
 const menus = computed(() => [
-  { title: "浏览记录", desc: "查看最近浏览过的动态", value: `${historyPosts.value.length} 条`, path: "/pages/browse-history/index" },
-  { title: "我的发布", desc: "查看已发布的内容", value: "12 条", path: "/pages/my-posts/index" },
-  { title: "我的点赞", desc: "回看收藏和点赞记录", value: "84 次", path: "/pages/my-likes/index" },
-  { title: "我的评论", desc: "管理所有评论互动", value: "19 条", path: "/pages/my-comments/index" },
-  { title: "我的分享", desc: "查看转发和分享记录", value: "7 次", path: "/pages/my-shares/index" },
-  { title: "消息中心", desc: "查看系统消息和互动提醒", value: "3 条未读", path: "/pages/messages/index" },
-  { title: "隐私协议", desc: "了解平台隐私与使用说明", value: "", path: "/pages/privacy/index" },
-  { title: "用户协议", desc: "查看平台使用规则", value: "", path: "/pages/user-agreement/index" },
+  { title: "浏览记录", desc: "查看最近浏览过的动态", value: `${historyPosts.value.length} 条`, path: "/pages/browse-history/index", requiresLogin: true },
+  { title: "我的发布", desc: "查看已发布的内容", value: "12 条", path: "/pages/my-posts/index", requiresLogin: true },
+  { title: "我的点赞", desc: "回看收藏和点赞记录", value: "84 次", path: "/pages/my-likes/index", requiresLogin: true },
+  { title: "我的评论", desc: "管理所有评论互动", value: "19 条", path: "/pages/my-comments/index", requiresLogin: true },
+  { title: "我的分享", desc: "查看转发和分享记录", value: "7 次", path: "/pages/my-shares/index", requiresLogin: true },
+  { title: "消息中心", desc: "查看系统消息和互动提醒", value: "3 条未读", path: "/pages/messages/index", requiresLogin: true },
+  { title: "隐私协议", desc: "了解平台隐私与使用说明", value: "", path: "/pages/privacy/index", requiresLogin: false },
+  { title: "用户协议", desc: "查看平台使用规则", value: "", path: "/pages/user-agreement/index", requiresLogin: false },
 ]);
 
-function go(url: string) {
+function go(url: string, requiresLogin = false) {
+  if (requiresLogin && !ensureLogin(url)) {
+    return;
+  }
   uni.navigateTo({ url });
 }
 
+function handlePrimaryAction() {
+  if (!isLoggedIn.value) {
+    openLoginPage();
+    return;
+  }
+  go("/pages/edit-profile/index", true);
+}
+
+function handleSecondaryAction() {
+  if (!isLoggedIn.value) {
+    openLoginPage();
+    return;
+  }
+  go("/pages/bind-phone/index", true);
+}
+
+function handleLogout() {
+  uni.showModal({
+    title: "退出登录",
+    content: "退出后仍可浏览基础内容，但发布、评论和个人记录需要重新登录。",
+    success: ({ confirm }) => {
+      if (!confirm) {
+        return;
+      }
+      logout();
+      uni.showToast({
+        title: "已退出登录",
+        icon: "none",
+      });
+      openLoginPage();
+    },
+  });
+}
+
 function editAvatar() {
+  if (!ensureLogin("/pages/edit-profile/index?focus=avatar")) {
+    return;
+  }
   uni.showActionSheet({
     itemList: ["拍照上传", "从相册选择", "去资料页编辑"],
     success: ({ tapIndex }) => {
@@ -189,6 +244,11 @@ function editAvatar() {
   background: rgba(255, 159, 47, 0.12);
 }
 
+.profile-card__tag--muted {
+  color: #8f8882;
+  background: rgba(143, 136, 130, 0.12);
+}
+
 .profile-card__desc {
   display: block;
   margin-top: 12rpx;
@@ -221,6 +281,19 @@ function editAvatar() {
 .profile-card__action--secondary {
   color: var(--brand-primary);
   background: #fff1ea;
+}
+
+.profile-card__logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 84rpx;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #ff6b4a;
+  background: rgba(255, 107, 74, 0.1);
 }
 
 .stat-grid {
