@@ -18,27 +18,33 @@
     <view v-if="post" class="card-shell detail-comments">
       <text class="section-title">评论区</text>
       <text class="section-desc">{{ commentTip }}</text>
-      <feed-comment-panel
-        :post="post"
-        :draft="commentDraft"
-        :reply-target="replyTarget"
-        :show-emoji="showEmoji"
-        :emojis="emojis"
-        @reply="replyToComment"
-        @clear-reply="clearReply"
-        @update:draft="commentDraft = $event"
-        @toggle-emoji="toggleEmoji"
-        @append-emoji="appendEmoji"
-        @submit="submitComment"
-      />
+      <button class="detail-comments__open" @tap="openCommentPopup">
+        打开底部评论面板
+      </button>
     </view>
+
+    <feed-comment-popup
+      :show="showCommentPopup"
+      :post="post"
+      :draft="commentDraft"
+      :reply-target="replyTarget"
+      :show-emoji="showEmoji"
+      :emojis="emojis"
+      @close="closeCommentPopup"
+      @reply="replyToComment"
+      @clear-reply="clearReply"
+      @update:draft="commentDraft = $event"
+      @toggle-emoji="toggleEmoji"
+      @append-emoji="appendEmoji"
+      @submit="submitComment"
+    />
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import FeedCommentPanel from "@/components/feed-comment-panel.vue";
+import FeedCommentPopup from "@/components/feed-comment-popup.vue";
 import PostCard from "@/components/post-card.vue";
 import { useFeed } from "@/hooks/use-feed";
 
@@ -47,6 +53,7 @@ const focusType = ref("");
 const commentDraft = ref("");
 const replyTarget = ref("");
 const showEmoji = ref(false);
+const showCommentPopup = ref(false);
 const emojis = ["😀", "😍", "👏", "🔥", "👍", "🥹", "🎉", "😄", "🤝", "💯"];
 const { posts, toggleLike, increaseShare, addComment, markBrowsed } = useFeed();
 
@@ -67,7 +74,7 @@ onLoad((options) => {
   focusType.value = String(options?.focus || "");
   markBrowsed(postId.value);
   if (focusType.value === "comment") {
-    scrollToComments();
+    openCommentPopup();
   }
 });
 
@@ -117,10 +124,16 @@ function handleShare() {
 }
 
 function scrollToComments() {
-  uni.pageScrollTo({
-    selector: ".detail-comments",
-    duration: 260,
-  });
+  openCommentPopup();
+}
+
+function openCommentPopup() {
+  showCommentPopup.value = true;
+}
+
+function closeCommentPopup() {
+  showCommentPopup.value = false;
+  showEmoji.value = false;
 }
 
 function replyToComment(author: string) {
@@ -196,5 +209,18 @@ function appendEmoji(emoji: string) {
   font-size: 24rpx;
   line-height: 1.7;
   color: var(--text-secondary);
+}
+
+.detail-comments__open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 80rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: 700;
 }
 </style>

@@ -62,33 +62,34 @@
           @like="handleLike"
           @comment="toggleComment"
           @share="handleShare"
-        >
-          <feed-comment-panel
-            v-if="activeCommentId === post.id"
-            :post="post"
-            :draft="commentDraft"
-            :reply-target="replyTarget"
-            :show-emoji="emojiPanelId === post.id"
-            :emojis="emojis"
-            @reply="replyToComment(post.id, $event)"
-            @clear-reply="clearReply"
-            @update:draft="commentDraft = $event"
-            @toggle-emoji="toggleEmoji(post.id)"
-            @append-emoji="appendEmoji($event)"
-            @submit="submitComment(post.id)"
-          />
-        </post-card>
+        />
       </view>
     </z-paging>
+
+    <feed-comment-popup
+      :show="Boolean(activeCommentPost)"
+      :post="activeCommentPost"
+      :draft="commentDraft"
+      :reply-target="replyTarget"
+      :show-emoji="emojiPanelId === activeCommentId"
+      :emojis="emojis"
+      @close="closeCommentPopup"
+      @reply="replyToComment(activeCommentId, $event)"
+      @clear-reply="clearReply"
+      @update:draft="commentDraft = $event"
+      @toggle-emoji="toggleEmoji(activeCommentId)"
+      @append-emoji="appendEmoji($event)"
+      @submit="submitComment(activeCommentId)"
+    />
 
     <instant-tabbar current="home" />
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { onHide, onUnload } from "@dcloudio/uni-app";
-import FeedCommentPanel from "@/components/feed-comment-panel.vue";
+import FeedCommentPopup from "@/components/feed-comment-popup.vue";
 import InstantTabbar from "@/components/instant-tabbar.vue";
 import PostCard from "@/components/post-card.vue";
 import { useFeed } from "@/hooks/use-feed";
@@ -103,6 +104,7 @@ const emojis = ["😀", "😍", "👏", "🔥", "👍", "🥹", "🎉", "😄", 
 const { posts, toggleLike, increaseShare, addComment } = useFeed();
 const { keyword, tabs, activeTab, filteredPosts } = useHomeFeed(posts);
 const { pagingRef, pagingList: pagingPosts, queryList } = usePagingList(filteredPosts);
+const activeCommentPost = computed(() => posts.value.find((item) => item.id === activeCommentId.value) || null);
 
 function goPublish() {
   uni.navigateTo({
@@ -126,13 +128,17 @@ function handleLike(id: string) {
 
 function toggleComment(id: string) {
   if (activeCommentId.value === id) {
-    activeCommentId.value = "";
-    emojiPanelId.value = "";
+    closeCommentPopup();
     return;
   }
 
   activeCommentId.value = id;
   replyTarget.value = "";
+  emojiPanelId.value = "";
+}
+
+function closeCommentPopup() {
+  activeCommentId.value = "";
   emojiPanelId.value = "";
 }
 
