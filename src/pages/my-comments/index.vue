@@ -8,13 +8,6 @@
       :default-page-size="2"
       @query="queryList"
     >
-      <template #top>
-        <view class="card-shell my-comments-panel">
-          <text class="section-title">我的评论</text>
-          <text class="section-desc">这里汇总你参与过的评论互动，点击对应动态可继续回复。</text>
-        </view>
-      </template>
-
       <view v-if="commentItems.length" class="my-comments-list">
         <button v-for="item in pagingItems" :key="item.id" class="comment-row card-shell" @tap="goDetail(item.postId)">
           <view class="comment-row__head">
@@ -63,17 +56,12 @@ function goDetail(id: string) {
 </script>
 
 <style scoped lang="scss">
-.my-comments-page {
-  padding-top: 24rpx;
-}
-
 .my-comments-page__paging {
   height: calc(100vh - 64rpx);
 }
 
-.my-comments-panel {
-  padding: 32rpx 28rpx;
-  margin-bottom: 24rpx;
+.my-comments-page__paging :deep(.zp-paging-container-content) {
+  padding-top: 24rpx;
 }
 
 .my-comments-list {

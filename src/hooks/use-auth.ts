@@ -13,6 +13,7 @@ type StoredAuthState = {
 };
 
 const STORAGE_KEY = "instant-flash-auth";
+const REDIRECT_STORAGE_KEY = "instant-flash-auth-redirect";
 
 const defaultProfile: AuthProfile = {
   nickname: "即闪用户",
@@ -83,6 +84,18 @@ function isTabPage(url: string) {
   return ["/pages/home/index", "/pages/profile/index"].includes(url);
 }
 
+function setPendingRedirect(redirect: string) {
+  uni.setStorageSync(REDIRECT_STORAGE_KEY, redirect);
+}
+
+function consumePendingRedirect() {
+  const redirect = String(uni.getStorageSync(REDIRECT_STORAGE_KEY) || "");
+  if (redirect) {
+    uni.removeStorageSync(REDIRECT_STORAGE_KEY);
+  }
+  return redirect || "/pages/profile/index";
+}
+
 export function useAuth() {
   const displayName = computed(() => profile.value.nickname || guestProfile.nickname);
   const displayPhone = computed(() => profile.value.phone);
@@ -105,8 +118,8 @@ export function useAuth() {
   }
 
   function openLoginPage(redirect = "/pages/profile/index") {
-    const url = `/pages/login/index?redirect=${encodeURIComponent(redirect)}`;
-    uni.navigateTo({ url });
+    setPendingRedirect(redirect);
+    uni.navigateTo({ url: "/pages/login/index" });
   }
 
   function ensureLogin(redirect = "/pages/profile/index") {
@@ -148,5 +161,6 @@ export function useAuth() {
     openLoginPage,
     ensureLogin,
     finishLoginRedirect,
+    consumePendingRedirect,
   };
 }

@@ -25,7 +25,6 @@
           {{ isLoggedIn ? "绑定手机" : "看看登录页" }}
         </button>
       </view>
-      <button v-if="isLoggedIn" class="profile-card__logout" @tap="handleLogout">退出登录</button>
     </view>
 
     <view class="stat-grid">
@@ -57,6 +56,10 @@
           @click="go(item.path, item.requiresLogin)"
         />
       </u-cell-group>
+    </view>
+
+    <view v-if="isLoggedIn" class="logout-panel card-shell">
+      <button class="profile-card__logout" @tap="handleLogout">退出登录</button>
     </view>
 
     <instant-tabbar current="profile" />
@@ -93,8 +96,6 @@ const menus = computed(() => [
   { title: "我的评论", desc: "管理所有评论互动", value: "19 条", path: "/pages/my-comments/index", requiresLogin: true },
   { title: "我的分享", desc: "查看转发和分享记录", value: "7 次", path: "/pages/my-shares/index", requiresLogin: true },
   { title: "消息中心", desc: "查看系统消息和互动提醒", value: "3 条未读", path: "/pages/messages/index", requiresLogin: true },
-  { title: "隐私协议", desc: "了解平台隐私与使用说明", value: "", path: "/pages/privacy/index", requiresLogin: false },
-  { title: "用户协议", desc: "查看平台使用规则", value: "", path: "/pages/user-agreement/index", requiresLogin: false },
 ]);
 
 function go(url: string, requiresLogin = false) {
@@ -327,6 +328,10 @@ function editAvatar() {
 .menu-panel {
   overflow: hidden;
   padding: 28rpx 0 0;
+}
+
+.logout-panel {
+  padding: 24rpx 28rpx;
 }
 
 .section-head {

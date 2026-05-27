@@ -1,10 +1,5 @@
 <template>
   <view class="page-shell messages-page">
-    <view class="card-shell messages-panel">
-      <text class="section-title">消息中心</text>
-      <text class="section-desc">这里集中展示点赞、评论、系统通知等消息，方便统一查看。</text>
-    </view>
-
     <view class="messages-list">
       <view v-for="item in messages" :key="item.title" class="message-row card-shell">
         <view class="message-row__head">
@@ -32,14 +27,11 @@ const messages = [
   gap: 24rpx;
 }
 
-.messages-panel {
-  padding: 32rpx 28rpx;
-}
-
 .messages-list {
   display: flex;
   flex-direction: column;
   gap: 18rpx;
+  padding-top: 24rpx;
 }
 
 .message-row {

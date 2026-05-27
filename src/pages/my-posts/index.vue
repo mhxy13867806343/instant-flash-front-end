@@ -8,13 +8,6 @@
       :default-page-size="1"
       @query="queryList"
     >
-      <template #top>
-        <view class="card-shell my-posts-panel">
-          <text class="section-title">我的发布</text>
-          <text class="section-desc">这里展示当前账号发布过的动态，点击卡片可直接进入详情继续编辑内容。</text>
-        </view>
-      </template>
-
       <view v-if="myPosts.length" class="my-posts-list">
         <post-card
           v-for="post in pagingPosts"
@@ -60,17 +53,12 @@ function handleTopicClick(topic: string) {
 </script>
 
 <style scoped lang="scss">
-.my-posts-page {
-  padding-top: 24rpx;
-}
-
 .my-posts-page__paging {
   height: calc(100vh - 64rpx);
 }
 
-.my-posts-panel {
-  padding: 32rpx 28rpx;
-  margin-bottom: 24rpx;
+.my-posts-page__paging :deep(.zp-paging-container-content) {
+  padding-top: 24rpx;
 }
 
 .my-posts-list {

@@ -8,13 +8,6 @@
       :default-page-size="2"
       @query="queryList"
     >
-      <template #top>
-        <view class="card-shell my-shares-panel">
-          <text class="section-title">我的分享</text>
-          <text class="section-desc">这里展示被你转发过和分享热度较高的动态，分享数和首页详情保持同步。</text>
-        </view>
-      </template>
-
       <view v-if="sharePosts.length" class="my-shares-list">
         <button v-for="post in pagingPosts" :key="post.id" class="share-row card-shell" @tap="goDetail(post.id)">
           <view class="share-row__head">
@@ -52,17 +45,12 @@ function goDetail(id: string) {
 </script>
 
 <style scoped lang="scss">
-.my-shares-page {
-  padding-top: 24rpx;
-}
-
 .my-shares-page__paging {
   height: calc(100vh - 64rpx);
 }
 
-.my-shares-panel {
-  padding: 32rpx 28rpx;
-  margin-bottom: 24rpx;
+.my-shares-page__paging :deep(.zp-paging-container-content) {
+  padding-top: 24rpx;
 }
 
 .my-shares-list {

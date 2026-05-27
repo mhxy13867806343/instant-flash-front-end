@@ -8,13 +8,6 @@
       :default-page-size="1"
       @query="queryList"
     >
-      <template #top>
-        <view class="card-shell my-likes-panel">
-          <text class="section-title">我的点赞</text>
-          <text class="section-desc">这里会展示你点赞过的内容，首页或详情取消点赞后这里也会同步变化。</text>
-        </view>
-      </template>
-
       <view v-if="likedPosts.length" class="my-likes-list">
         <post-card
           v-for="post in pagingPosts"
@@ -60,17 +53,12 @@ function handleTopicClick(topic: string) {
 </script>
 
 <style scoped lang="scss">
-.my-likes-page {
-  padding-top: 24rpx;
-}
-
 .my-likes-page__paging {
   height: calc(100vh - 64rpx);
 }
 
-.my-likes-panel {
-  padding: 32rpx 28rpx;
-  margin-bottom: 24rpx;
+.my-likes-page__paging :deep(.zp-paging-container-content) {
+  padding-top: 24rpx;
 }
 
 .my-likes-list {
