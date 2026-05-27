@@ -1,6 +1,13 @@
 <template>
   <view class="page-shell history-page">
-    <z-paging ref="pagingRef" v-model="pagingPosts" class="history-page__paging" :fixed="false" @query="queryList">
+    <z-paging
+      ref="pagingRef"
+      v-model="pagingPosts"
+      class="history-page__paging"
+      :fixed="false"
+      :default-page-size="2"
+      @query="queryList"
+    >
       <template #top>
         <view class="card-shell history-panel">
           <text class="section-title">最近浏览</text>
@@ -22,28 +29,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
-import { fetchFeedPage } from "@/api/feed";
-import PostCard from "@/components/post-card.vue";
 import { useFeed } from "@/hooks/use-feed";
-import type { FeedPost } from "@/mock/post-data";
+import { usePagingList } from "@/hooks/use-paging-list";
+import PostCard from "@/components/post-card.vue";
 
 const { historyPosts } = useFeed();
-const pagingRef = ref<{ complete: (list: FeedPost[]) => void; reload: () => void } | null>(null);
-const pagingPosts = ref<FeedPost[]>([]);
-
-async function queryList(pageNo: number, pageSize: number) {
-  const list = await fetchFeedPage(historyPosts.value, pageNo, pageSize);
-  pagingRef.value?.complete(list);
-}
-
-watch(
-  historyPosts,
-  () => {
-    pagingRef.value?.reload();
-  },
-  { deep: true }
-);
+const { pagingRef, pagingList: pagingPosts, queryList } = usePagingList(historyPosts);
 
 function goDetail(id: string) {
   uni.navigateTo({

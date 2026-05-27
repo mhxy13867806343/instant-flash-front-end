@@ -5,7 +5,7 @@ import { createFeedSeed } from "@/api/feed";
 const posts = ref<FeedPost[]>(createFeedSeed());
 const browseHistory = ref<string[]>(["post-003", "post-001", "post-002"]);
 
-function updatePost(id: string, updater: (post: FeedPost) => FeedPost) {
+function updatePost(id: string, updater: (post: FeedPost) => FeedPost): FeedPost | null {
   let nextPost: FeedPost | null = null;
   posts.value = posts.value.map((item) => {
     if (item.id !== id) {
@@ -23,7 +23,7 @@ export function useFeed() {
   }
 
   function toggleLike(id: string) {
-    const updated = updatePost(id, (item) => {
+    const updated: FeedPost | null = updatePost(id, (item) => {
       const liked = !item.liked;
       return {
         ...item,
@@ -34,7 +34,7 @@ export function useFeed() {
 
     return {
       post: updated,
-      liked: Boolean(updated?.liked),
+      liked: updated ? Boolean(updated.liked) : false,
     };
   }
 

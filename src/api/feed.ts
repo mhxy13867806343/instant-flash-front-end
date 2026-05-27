@@ -28,10 +28,3 @@ export function fetchFeedList() {
 export function fetchFeedDetail(id: string) {
   return requestMock(() => createFeedSeed().find((item) => item.id === id) || null, 120);
 }
-
-export function fetchFeedPage(list: FeedPost[], pageNo: number, pageSize: number) {
-  return requestMock(() => {
-    const start = Math.max(pageNo - 1, 0) * pageSize;
-    return list.slice(start, start + pageSize);
-  }, 120);
-}

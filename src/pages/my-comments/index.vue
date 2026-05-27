@@ -1,25 +1,37 @@
 <template>
   <view class="page-shell my-comments-page">
-    <view class="card-shell my-comments-panel">
-      <text class="section-title">我的评论</text>
-      <text class="section-desc">这里汇总你参与过的评论互动，点击对应动态可继续回复。</text>
-    </view>
-
-    <view class="my-comments-list">
-      <button v-for="item in commentItems" :key="item.id" class="comment-row card-shell" @tap="goDetail(item.postId)">
-        <view class="comment-row__head">
-          <text class="comment-row__title">{{ item.postTitle }}</text>
-          <text class="comment-row__time">{{ item.time }}</text>
+    <z-paging
+      ref="pagingRef"
+      v-model="pagingItems"
+      class="my-comments-page__paging"
+      :fixed="false"
+      :default-page-size="2"
+      @query="queryList"
+    >
+      <template #top>
+        <view class="card-shell my-comments-panel">
+          <text class="section-title">我的评论</text>
+          <text class="section-desc">这里汇总你参与过的评论互动，点击对应动态可继续回复。</text>
         </view>
-        <text class="comment-row__content">{{ item.content }}</text>
-      </button>
-    </view>
+      </template>
+
+      <view class="my-comments-list">
+        <button v-for="item in pagingItems" :key="item.id" class="comment-row card-shell" @tap="goDetail(item.postId)">
+          <view class="comment-row__head">
+            <text class="comment-row__title">{{ item.postTitle }}</text>
+            <text class="comment-row__time">{{ item.time }}</text>
+          </view>
+          <text class="comment-row__content">{{ item.content }}</text>
+        </button>
+      </view>
+    </z-paging>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
 import { useFeed } from "@/hooks/use-feed";
+import { usePagingList } from "@/hooks/use-paging-list";
 
 const { posts } = useFeed();
 
@@ -34,6 +46,7 @@ const commentItems = computed(() =>
     }))
   )
 );
+const { pagingRef, pagingList: pagingItems, queryList } = usePagingList(commentItems);
 
 function goDetail(id: string) {
   uni.navigateTo({
@@ -44,13 +57,16 @@ function goDetail(id: string) {
 
 <style scoped lang="scss">
 .my-comments-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
+  padding-top: 24rpx;
+}
+
+.my-comments-page__paging {
+  height: calc(100vh - 64rpx);
 }
 
 .my-comments-panel {
   padding: 32rpx 28rpx;
+  margin-bottom: 24rpx;
 }
 
 .my-comments-list {

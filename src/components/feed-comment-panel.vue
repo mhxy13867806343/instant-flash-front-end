@@ -72,8 +72,8 @@ const emit = defineEmits<{
   submit: [];
 }>();
 
-function handleInput(event: { detail: { value: string } }) {
-  emit("update:draft", event.detail.value || "");
+function handleInput(event: InputEvent & { detail?: { value?: string } }) {
+  emit("update:draft", event.detail?.value || "");
 }
 </script>
 

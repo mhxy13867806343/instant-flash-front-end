@@ -1,28 +1,41 @@
 <template>
   <view class="page-shell my-shares-page">
-    <view class="card-shell my-shares-panel">
-      <text class="section-title">我的分享</text>
-      <text class="section-desc">这里展示被你转发过和分享热度较高的动态，分享数和首页详情保持同步。</text>
-    </view>
-
-    <view class="my-shares-list">
-      <button v-for="post in sharePosts" :key="post.id" class="share-row card-shell" @tap="goDetail(post.id)">
-        <view class="share-row__head">
-          <text class="share-row__author">{{ post.author }}</text>
-          <text class="share-row__count">已分享 {{ post.shares }} 次</text>
+    <z-paging
+      ref="pagingRef"
+      v-model="pagingPosts"
+      class="my-shares-page__paging"
+      :fixed="false"
+      :default-page-size="2"
+      @query="queryList"
+    >
+      <template #top>
+        <view class="card-shell my-shares-panel">
+          <text class="section-title">我的分享</text>
+          <text class="section-desc">这里展示被你转发过和分享热度较高的动态，分享数和首页详情保持同步。</text>
         </view>
-        <text class="share-row__content">{{ post.content }}</text>
-      </button>
-    </view>
+      </template>
+
+      <view class="my-shares-list">
+        <button v-for="post in pagingPosts" :key="post.id" class="share-row card-shell" @tap="goDetail(post.id)">
+          <view class="share-row__head">
+            <text class="share-row__author">{{ post.author }}</text>
+            <text class="share-row__count">已分享 {{ post.shares }} 次</text>
+          </view>
+          <text class="share-row__content">{{ post.content }}</text>
+        </button>
+      </view>
+    </z-paging>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
 import { useFeed } from "@/hooks/use-feed";
+import { usePagingList } from "@/hooks/use-paging-list";
 
 const { posts } = useFeed();
 const sharePosts = computed(() => [...posts.value].sort((a, b) => b.shares - a.shares).slice(0, 3));
+const { pagingRef, pagingList: pagingPosts, queryList } = usePagingList(sharePosts);
 
 function goDetail(id: string) {
   uni.navigateTo({
@@ -33,13 +46,16 @@ function goDetail(id: string) {
 
 <style scoped lang="scss">
 .my-shares-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
+  padding-top: 24rpx;
+}
+
+.my-shares-page__paging {
+  height: calc(100vh - 64rpx);
 }
 
 .my-shares-panel {
   padding: 32rpx 28rpx;
+  margin-bottom: 24rpx;
 }
 
 .my-shares-list {

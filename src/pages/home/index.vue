@@ -1,74 +1,85 @@
 <template>
   <view class="page-shell page-with-tabbar home-page">
-    <view class="home-page__sticky">
-      <view class="hero card-shell">
-        <view class="hero__top">
-          <view class="hero__copy">
-            <text class="hero__title">即闪</text>
-            <text class="hero__subtitle">看附近动态，即时灵感，和同频的人互动。</text>
+    <z-paging
+      ref="pagingRef"
+      v-model="pagingPosts"
+      class="home-page__paging"
+      :fixed="false"
+      :default-page-size="2"
+      @query="queryList"
+    >
+      <template #top>
+        <view class="home-page__sticky">
+          <view class="hero card-shell">
+            <view class="hero__top">
+              <view class="hero__copy">
+                <text class="hero__title">即闪</text>
+                <text class="hero__subtitle">看附近动态，即时灵感，和同频的人互动。</text>
+              </view>
+              <button class="hero__publish" @tap="goPublish">
+                <view class="hero__publish-icon">+</view>
+                <text class="hero__publish-label">发动态</text>
+              </button>
+            </view>
+
+            <u-search
+              v-model="keyword"
+              placeholder="搜索动态、用户、地点"
+              :show-action="false"
+              bg-color="#FFF7F3"
+              placeholder-color="#9B948E"
+            />
+
+            <view class="feed-switch">
+              <button
+                v-for="item in tabs"
+                :key="item"
+                class="feed-switch__item"
+                :class="{ 'feed-switch__item--active': activeTab === item }"
+                @tap="activeTab = item"
+              >
+                {{ item }}
+              </button>
+            </view>
           </view>
-          <button class="hero__publish" @tap="goPublish">
-            <view class="hero__publish-icon">+</view>
-            <text class="hero__publish-label">发动态</text>
-          </button>
+
+          <view class="feed-summary">
+            <view>
+              <text class="section-title">最新动态</text>
+              <text class="section-desc">首页列表已接入 z-paging，下拉刷新和上拉加载统一可用。</text>
+            </view>
+            <text class="feed-summary__count">{{ filteredPosts.length }} 条内容</text>
+          </view>
         </view>
+      </template>
 
-        <u-search
-          v-model="keyword"
-          placeholder="搜索动态、用户、地点"
-          :show-action="false"
-          bg-color="#FFF7F3"
-          placeholder-color="#9B948E"
-        />
-
-        <view class="feed-switch">
-          <button
-            v-for="item in tabs"
-            :key="item"
-            class="feed-switch__item"
-            :class="{ 'feed-switch__item--active': activeTab === item }"
-            @tap="activeTab = item"
-          >
-            {{ item }}
-          </button>
-        </view>
-      </view>
-
-      <view class="feed-summary">
-        <view>
-          <text class="section-title">最新动态</text>
-          <text class="section-desc">点赞、评论、分享统一走 hooks 状态，首页和详情会同步。</text>
-        </view>
-        <text class="feed-summary__count">{{ filteredPosts.length }} 条内容</text>
-      </view>
-    </view>
-
-    <view class="feed-list">
-      <post-card
-        v-for="post in filteredPosts"
-        :key="post.id"
-        :post="post"
-        @detail="goDetail"
-        @like="handleLike"
-        @comment="toggleComment"
-        @share="handleShare"
-      >
-        <feed-comment-panel
-          v-if="activeCommentId === post.id"
+      <view class="feed-list">
+        <post-card
+          v-for="post in pagingPosts"
+          :key="post.id"
           :post="post"
-          :draft="commentDraft"
-          :reply-target="replyTarget"
-          :show-emoji="emojiPanelId === post.id"
-          :emojis="emojis"
-          @reply="replyToComment(post.id, $event)"
-          @clear-reply="clearReply"
-          @update:draft="commentDraft = $event"
-          @toggle-emoji="toggleEmoji(post.id)"
-          @append-emoji="appendEmoji($event)"
-          @submit="submitComment(post.id)"
-        />
-      </post-card>
-    </view>
+          @detail="goDetail"
+          @like="handleLike"
+          @comment="toggleComment"
+          @share="handleShare"
+        >
+          <feed-comment-panel
+            v-if="activeCommentId === post.id"
+            :post="post"
+            :draft="commentDraft"
+            :reply-target="replyTarget"
+            :show-emoji="emojiPanelId === post.id"
+            :emojis="emojis"
+            @reply="replyToComment(post.id, $event)"
+            @clear-reply="clearReply"
+            @update:draft="commentDraft = $event"
+            @toggle-emoji="toggleEmoji(post.id)"
+            @append-emoji="appendEmoji($event)"
+            @submit="submitComment(post.id)"
+          />
+        </post-card>
+      </view>
+    </z-paging>
 
     <instant-tabbar current="home" />
   </view>
@@ -82,6 +93,7 @@ import InstantTabbar from "@/components/instant-tabbar.vue";
 import PostCard from "@/components/post-card.vue";
 import { useFeed } from "@/hooks/use-feed";
 import { useHomeFeed } from "@/hooks/use-home-feed";
+import { usePagingList } from "@/hooks/use-paging-list";
 
 const activeCommentId = ref("");
 const commentDraft = ref("");
@@ -90,6 +102,7 @@ const emojiPanelId = ref("");
 const emojis = ["😀", "😍", "👏", "🔥", "👍", "🥹", "🎉", "😄", "🤝", "💯"];
 const { posts, toggleLike, increaseShare, addComment } = useFeed();
 const { keyword, tabs, activeTab, filteredPosts } = useHomeFeed(posts);
+const { pagingRef, pagingList: pagingPosts, queryList } = usePagingList(filteredPosts);
 
 function goPublish() {
   uni.navigateTo({
@@ -218,17 +231,19 @@ onUnload(() => {
 
 <style scoped lang="scss">
 .home-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
+  padding-top: 24rpx;
+}
+
+.home-page__paging {
+  height: calc(100vh - 64rpx);
 }
 
 .home-page__sticky {
   position: sticky;
   top: 0;
   z-index: 20;
-  margin: -32rpx -28rpx 0;
-  padding: 32rpx 28rpx 16rpx;
+  margin: -24rpx 0 0;
+  padding: 24rpx 0 16rpx;
   background: rgba(246, 242, 238, 0.94);
   backdrop-filter: blur(18px);
 }
