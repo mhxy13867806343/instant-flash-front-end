@@ -8,14 +8,14 @@
 
       <view v-if="mode === 'quick'" class="login-quick-panel">
         <view class="login-quick-panel__badge">推荐方式</view>
-        <u-button type="primary" shape="circle" @click="quickLogin">一键登录</u-button>
-        <text class="login-quick-panel__hint">推荐使用本机号码一键登录，更快进入即闪。</text>
+        <u-button type="primary" shape="circle" @click="quickLogin">微信一键登录</u-button>
+        <text class="login-quick-panel__hint">通过微信授权快速登录，更适合移动端一键进入即闪。</text>
       </view>
 
       <view v-else class="login-form-panel">
-        <text class="login-form-panel__title">{{ mode === "code" ? "验证码登录" : "手机号登录" }}</text>
+        <text class="login-form-panel__title">验证码登录</text>
         <text class="login-form-panel__desc">
-          {{ mode === "code" ? "填写手机号并输入验证码完成登录。" : "填写手机号后可直接进入，适合演示快速查看。" }}
+          填写手机号并输入验证码完成登录。
         </text>
 
         <u-form label-position="top">
@@ -50,16 +50,15 @@
 
         <view class="login-tips">
           <text>演示账号说明：</text>
-          <text v-if="mode === 'code'">验证码登录：手机号填任意合法号码，验证码输入 `123456` 即可。</text>
-          <text v-else>手机号登录：输入合法手机号后可直接进入，适合快速演示查看。</text>
+          <text>验证码登录：手机号填任意合法号码，验证码输入 `123456` 即可。</text>
         </view>
 
         <u-button type="primary" shape="circle" @click="submit">
-          {{ mode === "code" ? "验证码登录" : "手机号登录" }}
+          验证码登录
         </u-button>
       </view>
 
-      <view class="login-switcher">
+      <view v-if="modeOptions.length > 1" class="login-switcher">
         <button
           v-for="item in modeOptions"
           :key="item.value"
@@ -86,18 +85,25 @@ import { onLoad } from "@dcloudio/uni-app";
 import { useAuth } from "@/hooks/use-auth";
 import { isValidMobilePhone, sanitizeMobilePhone } from "@/utils/phone";
 
-type LoginMode = "quick" | "mobile" | "code";
+type LoginMode = "quick" | "code";
+
+let isH5 = false;
+// #ifdef H5
+isH5 = true;
+// #endif
 
 const phone = ref("");
 const code = ref("");
-const mode = ref<LoginMode>("quick");
+const mode = ref<LoginMode>(isH5 ? "code" : "quick");
 const redirect = ref("/pages/profile/index");
 const { login, finishLoginRedirect, consumePendingRedirect } = useAuth();
 
-const modeOptions = [
-  { label: "手机号登录", value: "mobile" as LoginMode },
-  { label: "验证码登录", value: "code" as LoginMode },
-];
+const modeOptions = isH5
+  ? [{ label: "验证码登录", value: "code" as LoginMode }]
+  : [
+      { label: "微信登录", value: "quick" as LoginMode },
+      { label: "验证码登录", value: "code" as LoginMode },
+    ];
 
 const codeButtonStyle = computed(() => ({
   height: "84rpx",
