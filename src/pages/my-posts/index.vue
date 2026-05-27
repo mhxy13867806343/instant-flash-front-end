@@ -15,7 +15,7 @@
         </view>
       </template>
 
-      <view class="my-posts-list">
+      <view v-if="myPosts.length" class="my-posts-list">
         <post-card
           v-for="post in pagingPosts"
           :key="post.id"
@@ -24,12 +24,19 @@
           @detail="goDetail"
         />
       </view>
+      <content-empty
+        v-else
+        title="还没有发布内容"
+        description="发一条新的动态后，这里会展示你的全部发布记录。"
+        icon="edit-pen"
+      />
     </z-paging>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
+import ContentEmpty from "@/components/content-empty.vue";
 import PostCard from "@/components/post-card.vue";
 import { useFeed } from "@/hooks/use-feed";
 import { usePagingList } from "@/hooks/use-paging-list";

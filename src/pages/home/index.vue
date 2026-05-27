@@ -53,7 +53,7 @@
         </view>
       </template>
 
-      <view class="feed-list">
+      <view v-if="filteredPosts.length" class="feed-list">
         <post-card
           v-for="post in pagingPosts"
           :key="post.id"
@@ -64,6 +64,12 @@
           @share="handleShare"
         />
       </view>
+      <content-empty
+        v-else
+        title="暂时没有匹配的动态"
+        description="可以试试切换推荐/最新，或者换个关键词重新搜索。"
+        icon="search"
+      />
     </z-paging>
 
     <feed-comment-popup
@@ -89,6 +95,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { onHide, onUnload } from "@dcloudio/uni-app";
+import ContentEmpty from "@/components/content-empty.vue";
 import FeedCommentPopup from "@/components/feed-comment-popup.vue";
 import InstantTabbar from "@/components/instant-tabbar.vue";
 import PostCard from "@/components/post-card.vue";
@@ -195,15 +202,17 @@ function clearReply() {
   }
 
   uni.showModal({
-    title: "取消回复",
-    content: "当前已输入评论内容，确定只取消回复对象吗？评论内容会保留。",
-    confirmText: "确定",
-    cancelText: "继续回复",
+    title: "清空输入",
+    content: "当前已输入评论内容，确认后会清空回复对象和输入内容。",
+    confirmText: "清空",
+    cancelText: "继续编辑",
     success: ({ confirm }) => {
       if (confirm) {
+        commentDraft.value = "";
         replyTarget.value = "";
+        emojiPanelId.value = "";
         uni.showToast({
-          title: "已取消回复对象",
+          title: "已清空",
           icon: "none",
         });
       }

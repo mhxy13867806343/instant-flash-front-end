@@ -15,7 +15,7 @@
         </view>
       </template>
 
-      <view class="history-list">
+      <view v-if="historyPosts.length" class="history-list">
         <post-card
           v-for="post in pagingPosts"
           :key="post.id"
@@ -24,11 +24,18 @@
           @detail="goDetail"
         />
       </view>
+      <content-empty
+        v-else
+        title="还没有浏览记录"
+        description="先去首页看看内容，这里会自动记录你最近浏览过的动态。"
+        icon="clock"
+      />
     </z-paging>
   </view>
 </template>
 
 <script setup lang="ts">
+import ContentEmpty from "@/components/content-empty.vue";
 import { useFeed } from "@/hooks/use-feed";
 import { usePagingList } from "@/hooks/use-paging-list";
 import PostCard from "@/components/post-card.vue";

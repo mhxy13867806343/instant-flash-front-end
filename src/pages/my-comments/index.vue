@@ -15,7 +15,7 @@
         </view>
       </template>
 
-      <view class="my-comments-list">
+      <view v-if="commentItems.length" class="my-comments-list">
         <button v-for="item in pagingItems" :key="item.id" class="comment-row card-shell" @tap="goDetail(item.postId)">
           <view class="comment-row__head">
             <text class="comment-row__title">{{ item.postTitle }}</text>
@@ -24,12 +24,19 @@
           <text class="comment-row__content">{{ item.content }}</text>
         </button>
       </view>
+      <content-empty
+        v-else
+        title="还没有评论记录"
+        description="去评论一条动态吧，后续互动都会沉淀到这里。"
+        icon="chat"
+      />
     </z-paging>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
+import ContentEmpty from "@/components/content-empty.vue";
 import { useFeed } from "@/hooks/use-feed";
 import { usePagingList } from "@/hooks/use-paging-list";
 

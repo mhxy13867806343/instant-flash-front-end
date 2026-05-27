@@ -15,7 +15,7 @@
         </view>
       </template>
 
-      <view class="my-shares-list">
+      <view v-if="sharePosts.length" class="my-shares-list">
         <button v-for="post in pagingPosts" :key="post.id" class="share-row card-shell" @tap="goDetail(post.id)">
           <view class="share-row__head">
             <text class="share-row__author">{{ post.author }}</text>
@@ -24,12 +24,19 @@
           <text class="share-row__content">{{ post.content }}</text>
         </button>
       </view>
+      <content-empty
+        v-else
+        title="还没有分享记录"
+        description="分享过的动态会出现在这里，方便你回看传播效果。"
+        icon="share"
+      />
     </z-paging>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
+import ContentEmpty from "@/components/content-empty.vue";
 import { useFeed } from "@/hooks/use-feed";
 import { usePagingList } from "@/hooks/use-paging-list";
 

@@ -15,7 +15,7 @@
         </view>
       </template>
 
-      <view class="my-likes-list">
+      <view v-if="likedPosts.length" class="my-likes-list">
         <post-card
           v-for="post in pagingPosts"
           :key="post.id"
@@ -24,12 +24,19 @@
           @detail="goDetail"
         />
       </view>
+      <content-empty
+        v-else
+        title="还没有点赞内容"
+        description="去首页逛逛并点个赞，这里就会同步收录。"
+        icon="heart"
+      />
     </z-paging>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
+import ContentEmpty from "@/components/content-empty.vue";
 import PostCard from "@/components/post-card.vue";
 import { useFeed } from "@/hooks/use-feed";
 import { usePagingList } from "@/hooks/use-paging-list";

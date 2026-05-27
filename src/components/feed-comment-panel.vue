@@ -1,6 +1,8 @@
 <template>
   <view class="comment-panel">
-    <view class="comment-panel__list">
+    <feed-comment-state :count="post.commentList.length" />
+
+    <view v-if="post.commentList.length" class="comment-panel__list">
       <view v-for="item in post.commentList" :key="item.id" class="comment-panel__item">
         <view class="comment-panel__head">
           <view class="comment-panel__meta">
@@ -53,6 +55,7 @@
 </template>
 
 <script setup lang="ts">
+import FeedCommentState from "@/components/feed-comment-state.vue";
 import type { FeedPost } from "@/mock/post-data";
 
 const props = defineProps<{
