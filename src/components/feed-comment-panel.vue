@@ -2,54 +2,58 @@
   <view class="comment-panel">
     <feed-comment-state :count="post.commentList.length" />
 
-    <view v-if="post.commentList.length" class="comment-panel__list">
-      <view v-for="item in post.commentList" :key="item.id" class="comment-panel__item">
-        <view class="comment-panel__head">
-          <view class="comment-panel__meta">
-            <text class="comment-panel__name">{{ item.author }}</text>
-            <text class="comment-panel__time">{{ item.time }}</text>
+    <scroll-view v-if="post.commentList.length" scroll-y class="comment-panel__list-scroll">
+      <view class="comment-panel__list">
+        <view v-for="item in post.commentList" :key="item.id" class="comment-panel__item">
+          <view class="comment-panel__head">
+            <view class="comment-panel__meta">
+              <text class="comment-panel__name">{{ item.author }}</text>
+              <text class="comment-panel__time">{{ item.time }}</text>
+            </view>
+            <button class="comment-panel__reply" @tap.stop="emit('reply', item.author)">
+              <image
+                class="comment-panel__reply-icon"
+                :src="replyTarget === item.author ? '/static/opt/read-selected.png' : '/static/opt/read.png'"
+                mode="aspectFit"
+              />
+            </button>
           </view>
-          <button class="comment-panel__reply" @tap.stop="emit('reply', item.author)">
-            <image
-              class="comment-panel__reply-icon"
-              :src="replyTarget === item.author ? '/static/opt/read-selected.png' : '/static/opt/read.png'"
-              mode="aspectFit"
-            />
-          </button>
+          <text v-if="item.replyTo" class="comment-panel__replyto">回复 @{{ item.replyTo }}</text>
+          <text class="comment-panel__content">{{ item.content }}</text>
         </view>
-        <text v-if="item.replyTo" class="comment-panel__replyto">回复 @{{ item.replyTo }}</text>
-        <text class="comment-panel__content">{{ item.content }}</text>
       </view>
-    </view>
+    </scroll-view>
 
-    <view v-if="replyTarget" class="comment-panel__replybar">
-      <text class="comment-panel__replybar-text">正在回复 @{{ replyTarget }}</text>
-      <button class="comment-panel__replybar-cancel" @tap.stop="emit('clear-reply')">
-        <image class="comment-panel__replybar-cancel-icon" src="/static/opt/close.png" mode="aspectFit" />
-      </button>
-    </view>
+    <view class="comment-panel__composer">
+      <view v-if="replyTarget" class="comment-panel__replybar">
+        <text class="comment-panel__replybar-text">正在回复 @{{ replyTarget }}</text>
+        <button class="comment-panel__replybar-cancel" @tap.stop="emit('clear-reply')">
+          <image class="comment-panel__replybar-cancel-icon" src="/static/opt/close.png" mode="aspectFit" />
+        </button>
+      </view>
 
-    <view class="comment-panel__editor">
-      <input
-        :value="draft"
-        class="comment-panel__input"
-        :placeholder="replyTarget ? `回复 @${replyTarget}` : '说点什么...'"
-        placeholder-class="comment-panel__placeholder"
-        @input="handleInput"
-      />
-      <button class="comment-panel__emoji-btn" @tap.stop="emit('toggle-emoji')">😊</button>
-      <button class="comment-panel__submit" @tap.stop="emit('submit')">发送</button>
-    </view>
+      <view class="comment-panel__editor">
+        <input
+          :value="draft"
+          class="comment-panel__input"
+          :placeholder="replyTarget ? `回复 @${replyTarget}` : '说点什么...'"
+          placeholder-class="comment-panel__placeholder"
+          @input="handleInput"
+        />
+        <button class="comment-panel__emoji-btn" @tap.stop="emit('toggle-emoji')">😊</button>
+        <button class="comment-panel__submit" @tap.stop="emit('submit')">发送</button>
+      </view>
 
-    <view v-if="showEmoji" class="comment-panel__emoji">
-      <button
-        v-for="emoji in emojis"
-        :key="emoji"
-        class="comment-panel__emoji-item"
-        @tap.stop="emit('append-emoji', emoji)"
-      >
-        {{ emoji }}
-      </button>
+      <view v-if="showEmoji" class="comment-panel__emoji">
+        <button
+          v-for="emoji in emojis"
+          :key="emoji"
+          class="comment-panel__emoji-item"
+          @tap.stop="emit('append-emoji', emoji)"
+        >
+          {{ emoji }}
+        </button>
+      </view>
     </view>
   </view>
 </template>
@@ -82,14 +86,24 @@ function handleInput(event: InputEvent & { detail?: { value?: string } }) {
 
 <style scoped lang="scss">
 .comment-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   padding-top: 8rpx;
   border-top: 1rpx solid rgba(235, 226, 218, 0.9);
+}
+
+.comment-panel__list-scroll {
+  flex: 1;
+  min-height: 0;
+  margin-top: 16rpx;
 }
 
 .comment-panel__list {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
+  padding-bottom: 12rpx;
 }
 
 .comment-panel__item {
@@ -162,6 +176,14 @@ function handleInput(event: InputEvent & { detail?: { value?: string } }) {
   padding: 16rpx 20rpx;
   border-radius: 18rpx;
   background: rgba(255, 107, 74, 0.08);
+}
+
+.comment-panel__composer {
+  flex-shrink: 0;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  background: #fffdfb;
+  border-top: 1rpx solid rgba(235, 226, 218, 0.9);
 }
 
 .comment-panel__replybar-text {

@@ -12,7 +12,7 @@
         </button>
       </view>
 
-      <scroll-view scroll-y class="comment-popup__body">
+      <view class="comment-popup__body">
         <feed-comment-panel
           :post="post"
           :draft="draft"
@@ -26,7 +26,7 @@
           @append-emoji="emit('append-emoji', $event)"
           @submit="emit('submit')"
         />
-      </scroll-view>
+      </view>
     </view>
   </view>
 </template>
@@ -73,7 +73,9 @@ const emit = defineEmits<{
   right: 0;
   bottom: 0;
   left: 0;
-  max-height: 72vh;
+  display: flex;
+  flex-direction: column;
+  height: 72vh;
   padding: 28rpx 28rpx calc(env(safe-area-inset-bottom) + 28rpx);
   border-radius: 32rpx 32rpx 0 0;
   background: #fffdfb;
@@ -119,7 +121,8 @@ const emit = defineEmits<{
 }
 
 .comment-popup__body {
-  max-height: calc(72vh - 108rpx);
+  flex: 1;
+  min-height: 0;
   margin-top: 24rpx;
 }
 </style>
