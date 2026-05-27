@@ -22,6 +22,7 @@
           :post="post"
           :show-actions="false"
           @detail="goDetail"
+          @topic="handleTopicClick"
         />
       </view>
       <content-empty
@@ -40,15 +41,21 @@ import ContentEmpty from "@/components/content-empty.vue";
 import PostCard from "@/components/post-card.vue";
 import { useFeed } from "@/hooks/use-feed";
 import { usePagingList } from "@/hooks/use-paging-list";
+import { useTopicSearch } from "@/hooks/use-topic-search";
 
 const { posts } = useFeed();
 const myPosts = computed(() => posts.value.slice(0, 2));
 const { pagingRef, pagingList: pagingPosts, queryList } = usePagingList(myPosts);
+const { openTopicSearch } = useTopicSearch();
 
 function goDetail(id: string) {
   uni.navigateTo({
     url: `/pages/post-detail/index?id=${id}`,
   });
+}
+
+function handleTopicClick(topic: string) {
+  openTopicSearch(topic);
 }
 </script>
 

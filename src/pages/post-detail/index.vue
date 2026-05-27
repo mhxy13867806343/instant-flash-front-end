@@ -8,6 +8,7 @@
         @like="handleLike"
         @comment="scrollToComments"
         @share="handleShare"
+        @topic="handleTopicClick"
       />
       <view class="detail-note">
         <text class="detail-note__title">动态详情</text>
@@ -49,6 +50,7 @@ import FeedCommentState from "@/components/feed-comment-state.vue";
 import FeedCommentPopup from "@/components/feed-comment-popup.vue";
 import PostCard from "@/components/post-card.vue";
 import { useFeed } from "@/hooks/use-feed";
+import { useTopicSearch } from "@/hooks/use-topic-search";
 
 const postId = ref("post-001");
 const focusType = ref("");
@@ -58,6 +60,7 @@ const showEmoji = ref(false);
 const showCommentPopup = ref(false);
 const emojis = ["😀", "😍", "👏", "🔥", "👍", "🥹", "🎉", "😄", "🤝", "💯"];
 const { posts, toggleLike, increaseShare, addComment, markBrowsed } = useFeed();
+const { openTopicSearch } = useTopicSearch();
 
 const post = computed(() => posts.value.find((item) => item.id === postId.value) || null);
 
@@ -134,6 +137,8 @@ function openCommentPopup() {
 }
 
 function closeCommentPopup() {
+  commentDraft.value = "";
+  replyTarget.value = "";
   showCommentPopup.value = false;
   showEmoji.value = false;
 }
@@ -177,6 +182,10 @@ function toggleEmoji() {
 
 function appendEmoji(emoji: string) {
   commentDraft.value = `${commentDraft.value}${emoji}`;
+}
+
+function handleTopicClick(topic: string) {
+  openTopicSearch(topic);
 }
 </script>
 

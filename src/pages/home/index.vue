@@ -62,6 +62,7 @@
           @like="handleLike"
           @comment="toggleComment"
           @share="handleShare"
+          @topic="handleTopicClick"
         />
       </view>
       <content-empty
@@ -102,6 +103,7 @@ import PostCard from "@/components/post-card.vue";
 import { useFeed } from "@/hooks/use-feed";
 import { useHomeFeed } from "@/hooks/use-home-feed";
 import { usePagingList } from "@/hooks/use-paging-list";
+import { useTopicSearch } from "@/hooks/use-topic-search";
 
 const activeCommentId = ref("");
 const commentDraft = ref("");
@@ -111,6 +113,7 @@ const emojis = ["😀", "😍", "👏", "🔥", "👍", "🥹", "🎉", "😄", 
 const { posts, toggleLike, increaseShare, addComment } = useFeed();
 const { keyword, tabs, activeTab, filteredPosts } = useHomeFeed(posts);
 const { pagingRef, pagingList: pagingPosts, queryList } = usePagingList(filteredPosts);
+const { openTopicSearch } = useTopicSearch();
 const activeCommentPost = computed(() => posts.value.find((item) => item.id === activeCommentId.value) || null);
 
 function goPublish() {
@@ -145,6 +148,8 @@ function toggleComment(id: string) {
 }
 
 function closeCommentPopup() {
+  commentDraft.value = "";
+  replyTarget.value = "";
   activeCommentId.value = "";
   emojiPanelId.value = "";
 }
@@ -184,6 +189,10 @@ function handleShare(id: string) {
       });
     },
   });
+}
+
+function handleTopicClick(topic: string) {
+  openTopicSearch(topic);
 }
 
 function replyToComment(postId: string, author: string) {

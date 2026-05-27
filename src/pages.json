@@ -39,6 +39,12 @@
       }
     },
     {
+      "path": "pages/topic-search/index",
+      "style": {
+        "navigationBarTitleText": "搜索话题"
+      }
+    },
+    {
       "path": "pages/post-detail/index",
       "style": {
         "navigationBarTitleText": "内容详情"

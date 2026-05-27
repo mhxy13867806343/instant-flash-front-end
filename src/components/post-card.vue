@@ -15,7 +15,14 @@
       <view class="post-body">
         <text class="post-content">{{ post.content }}</text>
         <view class="topic-row">
-          <text v-for="topic in post.topics" :key="topic" class="topic-chip">#{{ topic }}</text>
+          <button
+            v-for="topic in post.topics"
+            :key="topic"
+            class="topic-chip"
+            @tap.stop="emit('topic', topic)"
+          >
+            #{{ topic }}
+          </button>
         </view>
       </view>
 
@@ -73,6 +80,7 @@ const emit = defineEmits<{
   like: [id: string];
   comment: [id: string];
   share: [id: string];
+  topic: [topic: string];
 }>();
 
 const avatarText = computed(() => props.post.author.slice(0, 1));
@@ -183,6 +191,11 @@ function handleDetail() {
 }
 
 .topic-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44rpx;
+  padding: 0 4rpx;
   color: #5d7aa6;
   font-size: 22rpx;
 }

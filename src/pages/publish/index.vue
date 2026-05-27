@@ -14,14 +14,14 @@
       <view class="card-shell publish-card">
         <view class="publish-card__head">
           <text class="publish-card__title">动态正文</text>
-          <text class="publish-card__count">{{ content.length }}/300</text>
+          <text class="publish-card__count">{{ content.length }}/2000</text>
         </view>
         <textarea
           v-model="content"
           class="publish-textarea"
-          maxlength="300"
+          maxlength="2000"
           auto-height
-          placeholder="分享这一刻在发生什么，比如地点、心情、想约的人..."
+          placeholder="分享这一刻在发生什么，长文内容也可以慢慢写..."
           placeholder-class="publish-placeholder"
         />
       </view>
@@ -30,6 +30,14 @@
         <view class="publish-card__head">
           <text class="publish-card__title">选择话题</text>
           <text class="publish-card__hint">至少选一个，方便首页推荐</text>
+        </view>
+        <button class="topic-search-entry" @tap="openTopicSearchPage">
+          <u-icon name="search" color="#8D867F" size="30" />
+          <text class="topic-search-entry__text">点击搜索话题</text>
+        </button>
+        <view class="topic-picker__summary">
+          <text class="topic-picker__summary-title">推荐话题</text>
+          <text class="topic-picker__summary-desc">点一下加入，已选中的话题再次点击可取消。</text>
         </view>
         <view class="topic-picker__tags">
           <button
@@ -102,6 +110,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { recommendedTopicOptions } from "@/api/topic";
 
 type MediaItem = {
   id: number;
@@ -116,17 +125,23 @@ type MediaSlot =
       type: "add";
     };
 
+type PickedMediaFile = {
+  fileType: "image" | "video";
+  name?: string;
+  file?: File;
+};
+
 const content = ref("");
-const topics = ["同城发现", "灵感记录", "今日穿搭", "周末去哪"];
+const topics = recommendedTopicOptions;
 const selectedTopics = ref<string[]>(["同城发现"]);
 const mediaItems = ref<MediaItem[]>([]);
 const nextMediaId = ref(1);
 
-const hasVideo = computed(() => mediaItems.value.some((item) => item.type === "video"));
+const videoCount = computed(() => mediaItems.value.filter((item) => item.type === "video").length);
 const imageCount = computed(() => mediaItems.value.filter((item) => item.type === "image").length);
-const mediaHint = computed(() => `支持最多 9 个媒体，可带 1 个视频，默认展示 1 个上传位`);
+const mediaHint = computed(() => `支持图片和视频任意混传，总数最多 9 个，默认展示 1 个上传位`);
 const addSlotMeta = computed(() =>
-  hasVideo.value ? `已选 ${imageCount.value} 张图片 / 1 个视频` : `已选 ${imageCount.value} 张图片`
+  `已选 ${imageCount.value} 张图片 / ${videoCount.value} 个视频`
 );
 
 const mediaSlots = computed<MediaSlot[]>(() => {
@@ -141,6 +156,46 @@ const mediaSlots = computed<MediaSlot[]>(() => {
 
   return slots;
 });
+
+function getMediaLabel(file: Record<string, any>, type: MediaItem["type"], id: number) {
+  if (typeof file.file?.name === "string" && file.file.name) {
+    return file.file.name;
+  }
+
+  if (typeof file.name === "string" && file.name) {
+    return file.name;
+  }
+
+  return type === "video" ? `视频 ${id}` : `图片 ${id}`;
+}
+
+function isH5() {
+  return typeof window !== "undefined" && typeof document !== "undefined";
+}
+
+function openH5FilePicker(options: { accept: string; multiple: boolean }) {
+  return new Promise<PickedMediaFile[]>((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = options.accept;
+    input.multiple = options.multiple;
+    input.style.display = "none";
+
+    input.onchange = () => {
+      const files = Array.from(input.files || []).map((file) => ({
+        fileType: file.type.startsWith("video/") ? ("video" as const) : ("image" as const),
+        name: file.name,
+        file,
+      }));
+
+      input.remove();
+      resolve(files);
+    };
+
+    document.body.appendChild(input);
+    input.click();
+  });
+}
 
 function toggleTopic(topic: string) {
   if (selectedTopics.value.includes(topic)) {
@@ -159,7 +214,49 @@ function toggleTopic(topic: string) {
   selectedTopics.value = [...selectedTopics.value, topic];
 }
 
-function addMedia(type: "image" | "video") {
+function openTopicSearchPage() {
+  uni.navigateTo({
+    url: `/pages/topic-search/index?select=1&selected=${encodeURIComponent(selectedTopics.value.join(","))}`,
+    success: (res) => {
+      res.eventChannel.once("topic-selected", ({ topic }: { topic: string }) => {
+        toggleTopic(topic);
+      });
+    },
+  });
+}
+
+function appendMediaFromFiles(files: Record<string, any>[]) {
+  if (!files.length) {
+    return;
+  }
+
+  const nextItems = [...mediaItems.value];
+  let addedCount = 0;
+
+  for (const file of files) {
+    if (nextItems.length >= 9) {
+      break;
+    }
+
+    const type = file.fileType === "video" ? "video" : "image";
+    const id = nextMediaId.value++;
+    nextItems.push({
+      id,
+      type,
+      label: getMediaLabel(file, type, id),
+    });
+    addedCount += 1;
+  }
+
+  mediaItems.value = nextItems;
+
+  uni.showToast({
+    title: addedCount ? `已添加 ${addedCount} 个媒体` : "最多添加 9 个媒体",
+    icon: "none",
+  });
+}
+
+function openAppMixedMediaPicker() {
   if (mediaItems.value.length >= 9) {
     uni.showToast({
       title: "最多添加 9 个媒体",
@@ -168,43 +265,78 @@ function addMedia(type: "image" | "video") {
     return;
   }
 
-  if (type === "video" && hasVideo.value) {
-    uni.showToast({
-      title: "最多只能添加 1 个视频",
-      icon: "none",
+  uni.chooseMedia({
+    count: 9 - mediaItems.value.length,
+    mediaType: ["mix"],
+    sourceType: ["album"],
+    success: (result) => {
+      appendMediaFromFiles((result.tempFiles || []) as Record<string, any>[]);
+    },
+  });
+}
+
+async function openMixedMediaPicker() {
+  if (isH5()) {
+    const files = await openH5FilePicker({
+      accept: "image/*,video/*",
+      multiple: true,
     });
+    appendMediaFromFiles(files);
     return;
   }
 
-  const id = nextMediaId.value++;
-  mediaItems.value = [
-    ...mediaItems.value,
-    {
-      id,
-      type,
-      label: type === "video" ? `视频 ${id}` : `图片 ${id}`,
-    },
-  ];
+  openAppMixedMediaPicker();
+}
+
+function updateMediaLabel(item: MediaItem, file: Record<string, any>) {
+  mediaItems.value = mediaItems.value.map((media) =>
+    media.id === item.id
+      ? {
+          ...media,
+          label: getMediaLabel(file, item.type, media.id),
+        }
+      : media
+  );
+
   uni.showToast({
-    title: type === "video" ? "已添加视频" : "已添加图片",
+    title: item.type === "video" ? "已更新视频" : "已更新图片",
     icon: "none",
   });
 }
 
-function handleMediaCellTap(item: MediaSlot) {
-  if (item.type === "add") {
-    const itemList = hasVideo.value ? ["添加图片"] : ["添加图片", "添加视频"];
-    uni.showActionSheet({
-      itemList,
-      success: ({ tapIndex }) => {
-        if (itemList[tapIndex] === "添加视频") {
-          addMedia("video");
-          return;
-        }
-
-        addMedia("image");
-      },
+async function replaceMedia(item: MediaItem) {
+  if (isH5()) {
+    const files = await openH5FilePicker({
+      accept: item.type === "video" ? "video/*" : "image/*",
+      multiple: false,
     });
+    const [file] = files;
+    if (!file) {
+      return;
+    }
+
+    updateMediaLabel(item, file);
+    return;
+  }
+
+  uni.chooseMedia({
+    count: 1,
+    mediaType: [item.type],
+    sourceType: ["album"],
+    success: (result) => {
+      const [file] = (result.tempFiles || []) as Record<string, any>[];
+      if (!file) {
+        return;
+      }
+
+      updateMediaLabel(item, file);
+    },
+  });
+}
+
+async function handleMediaCellTap(item: MediaSlot) {
+  if (item.type === "add") {
+    await openMixedMediaPicker();
     return;
   }
 
@@ -220,13 +352,7 @@ function handleMediaCellTap(item: MediaSlot) {
         return;
       }
 
-      mediaItems.value = mediaItems.value.map((media) =>
-        media.id === item.id ? { ...media, label: media.type === "video" ? `视频 ${media.id}` : `图片 ${media.id}` } : media
-      );
-      uni.showToast({
-        title: item.type === "video" ? "已更新视频" : "已更新图片",
-        icon: "none",
-      });
+      replaceMedia(item);
     },
   });
 }
@@ -330,6 +456,20 @@ function submit() {
   gap: 14rpx;
 }
 
+.topic-picker__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.topic-picker__summary-title {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.topic-picker__summary-desc,
 .topic-picker__tag {
   display: inline-flex;
   align-items: center;
@@ -340,6 +480,23 @@ function submit() {
   background: #fff4ef;
   color: var(--text-secondary);
   font-size: 24rpx;
+}
+
+.topic-search-entry {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  width: 100%;
+  height: 84rpx;
+  padding: 0 24rpx;
+  border-radius: 999rpx;
+  background: #fff7f3;
+  color: var(--text-secondary);
+}
+
+.topic-search-entry__text {
+  font-size: 24rpx;
+  color: #8d867f;
 }
 
 .topic-picker__tag--active {
