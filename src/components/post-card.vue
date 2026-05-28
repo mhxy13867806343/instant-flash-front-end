@@ -28,9 +28,10 @@
 
       <view v-if="post.media.length" class="media-grid" :class="`media-grid--${mediaColumns}`">
         <view
-          v-for="item in post.media"
+          v-for="(item, index) in post.media"
           :key="item"
           class="media-cell"
+          @tap.stop="openMediaPreview(index)"
         >
           <text class="media-label">{{ item }}</text>
         </view>
@@ -55,11 +56,20 @@
     <view class="post-extra" @tap.stop>
       <slot />
     </view>
+
+    <media-preview-popup
+      :show="previewVisible"
+      :items="previewAssets"
+      :current="previewIndex"
+      @close="closePreview"
+      @update:current="previewIndex = $event"
+    />
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import MediaPreviewPopup, { type MediaPreviewAsset } from "@/components/media-preview-popup.vue";
 import type { FeedPost } from "@/mock/post-data";
 import { formatCount } from "@/utils/number";
 
@@ -84,10 +94,19 @@ const emit = defineEmits<{
 }>();
 
 const avatarText = computed(() => props.post.author.slice(0, 1));
+const previewVisible = ref(false);
+const previewIndex = ref(0);
 
 const mediaColumns = computed(() => {
   return props.post.media.length >= 3 ? 3 : props.post.media.length;
 });
+const previewAssets = computed<MediaPreviewAsset[]>(() =>
+  props.post.media.map((item) => ({
+    type: "image",
+    label: item,
+    description: `${props.post.location} · ${props.post.time}`,
+  }))
+);
 
 const likeText = computed(() => formatCount(props.post.likes));
 const commentText = computed(() => formatCount(props.post.comments));
@@ -97,6 +116,15 @@ function handleDetail() {
   if (props.mode !== "detail") {
     emit("detail", props.post.id);
   }
+}
+
+function openMediaPreview(index: number) {
+  previewIndex.value = index;
+  previewVisible.value = true;
+}
+
+function closePreview() {
+  previewVisible.value = false;
 }
 </script>
 

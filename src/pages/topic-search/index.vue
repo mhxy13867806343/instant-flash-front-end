@@ -9,6 +9,22 @@
         bg-color="#FFF7F3"
         placeholder-color="#9B948E"
       />
+      <view v-if="showTopicSuggestPanel" class="topic-suggest-panel">
+        <view class="topic-suggest-panel__head">
+          <text class="topic-suggest-panel__title">话题联想</text>
+          <text class="topic-suggest-panel__desc">输入 `#` 后可直接点选话题</text>
+        </view>
+        <view class="topic-suggest-panel__list">
+          <button
+            v-for="item in topicSuggestOptions"
+            :key="item"
+            class="topic-suggest-panel__item"
+            @tap="handleTopicTap(item)"
+          >
+            #{{ item }}
+          </button>
+        </view>
+      </view>
 
       <view class="topic-section">
         <view class="topic-section__head">
@@ -28,7 +44,7 @@
           </button>
         </view>
         <content-empty
-          v-else
+          v-else-if="showSearchEmptyState"
           title="没有搜索到相关话题"
           description="换个关键词试试，或者从下面推荐话题里直接选。"
           icon="search"
@@ -97,9 +113,24 @@ const selectMode = ref(false);
 const selectedTopics = ref<string[]>([]);
 const { posts, toggleLike, increaseShare } = useFeed();
 const { normalizeTopic } = useTopicSearch();
+const normalizedKeyword = computed(() => normalizeTopic(keyword.value));
+const rawKeyword = computed(() => keyword.value.trim());
+const showTopicSuggestPanel = computed(() => Boolean(rawKeyword.value));
+const topicSuggestOptions = computed(() => {
+  if (!showTopicSuggestPanel.value) {
+    return [];
+  }
+
+  if (!normalizedKeyword.value) {
+    return recommendedTopicOptions.slice(0, 8);
+  }
+
+  return searchResults.value.length ? searchResults.value : recommendedTopicOptions.slice(0, 8);
+});
+const showSearchEmptyState = computed(() => Boolean(normalizedKeyword.value));
 
 const relatedPosts = computed(() => {
-  const q = keyword.value.trim().toLowerCase();
+  const q = normalizedKeyword.value.toLowerCase();
   if (!q) {
     return posts.value.slice(0, 4);
   }
@@ -216,6 +247,55 @@ function handleShare(id: string) {
   display: flex;
   flex-direction: column;
   gap: 18rpx;
+}
+
+.topic-suggest-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: -8rpx;
+  padding: 20rpx;
+  border-radius: 24rpx;
+  background: #fff7f3;
+  box-shadow: 0 16rpx 36rpx rgba(255, 107, 74, 0.08);
+}
+
+.topic-suggest-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.topic-suggest-panel__title {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.topic-suggest-panel__desc {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+}
+
+.topic-suggest-panel__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+
+.topic-suggest-panel__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60rpx;
+  padding: 0 22rpx;
+  border-radius: 999rpx;
+  background: #fff;
+  color: var(--brand-primary);
+  font-size: 24rpx;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2rpx rgba(255, 107, 74, 0.14);
 }
 
 .topic-section__head {
