@@ -12,6 +12,7 @@
               {{ isLoggedIn ? "已登录" : "未登录" }}
             </text>
             <text v-if="isLoggedIn" class="profile-card__tag profile-card__tag--primary">创作者</text>
+            <text v-if="isLoggedIn" class="profile-card__tag profile-card__tag--muted">{{ profile.gender }}</text>
             <text v-if="displayPhone" class="profile-card__tag profile-card__tag--warning">{{ displayPhone }}</text>
           </view>
           <text class="profile-card__desc">{{ profileDesc }}</text>
@@ -78,7 +79,7 @@ const { isLoggedIn, profile, displayName, displayPhone, logout, openLoginPage, e
 
 const profileDesc = computed(() =>
   isLoggedIn.value
-    ? "记录生活灵感，分享此刻想表达的内容，也收集身边值得被看见的动态。"
+    ? profile.value.bio || "记录生活灵感，分享此刻想表达的内容，也收集身边值得被看见的动态。"
     : "登录后可以发布动态、管理互动记录，也能同步你的浏览和评论草稿。"
 );
 

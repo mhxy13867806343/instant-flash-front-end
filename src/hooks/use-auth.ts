@@ -5,6 +5,8 @@ type AuthProfile = {
   nickname: string;
   phone: string;
   avatarText: string;
+  gender: "男" | "女" | "保密";
+  bio: string;
 };
 
 type StoredAuthState = {
@@ -19,12 +21,16 @@ const defaultProfile: AuthProfile = {
   nickname: "即闪用户",
   phone: "138****2468",
   avatarText: "即",
+  gender: "保密",
+  bio: "记录生活灵感，分享值得被看见的瞬间。",
 };
 
 const guestProfile: AuthProfile = {
   nickname: "未登录",
   phone: "",
   avatarText: "游",
+  gender: "保密",
+  bio: "",
 };
 
 function readStoredState(): StoredAuthState {
@@ -44,6 +50,8 @@ function readStoredState(): StoredAuthState {
         nickname: String(parsed?.profile?.nickname || defaultProfile.nickname),
         phone: String(parsed?.profile?.phone || defaultProfile.phone),
         avatarText: String(parsed?.profile?.avatarText || defaultProfile.avatarText),
+        gender: parsed?.profile?.gender === "男" || parsed?.profile?.gender === "女" ? parsed.profile.gender : defaultProfile.gender,
+        bio: String(parsed?.profile?.bio || defaultProfile.bio),
       },
     };
   } catch {
@@ -106,8 +114,22 @@ export function useAuth() {
       nickname,
       phone: maskPhone(payload.phone),
       avatarText: getAvatarText(nickname),
+      gender: profile.value.gender || defaultProfile.gender,
+      bio: profile.value.bio || defaultProfile.bio,
     };
     isLoggedIn.value = true;
+    persistState();
+  }
+
+  function updateProfile(payload: { nickname: string; gender: AuthProfile["gender"]; bio: string }) {
+    const nickname = payload.nickname.trim() || defaultProfile.nickname;
+    profile.value = {
+      ...profile.value,
+      nickname,
+      gender: payload.gender,
+      bio: payload.bio.trim(),
+      avatarText: getAvatarText(nickname),
+    };
     persistState();
   }
 
@@ -157,6 +179,7 @@ export function useAuth() {
     displayName,
     displayPhone,
     login,
+    updateProfile,
     logout,
     openLoginPage,
     ensureLogin,
