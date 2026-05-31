@@ -29,13 +29,30 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { fetchMyShares } from "@/api/user";
 import ContentEmpty from "@/components/content-empty.vue";
 import { useFeed } from "@/hooks/use-feed";
 import { usePagingList } from "@/hooks/use-paging-list";
+import { mapApiPostToFeedPost } from "@/utils/post-mapper";
 
 const { posts } = useFeed();
 const sharePosts = computed(() => [...posts.value].sort((a, b) => b.shares - a.shares).slice(0, 3));
-const { pagingRef, pagingList: pagingPosts, queryList } = usePagingList(sharePosts);
+const { pagingRef, pagingList: pagingPosts, queryList } = usePagingList(async (pageNo, pageSize) => {
+  const offset = Math.max(pageNo - 1, 0) * pageSize;
+  try {
+    const result = await fetchMyShares({ limit: pageSize, offset });
+    return {
+      items: result.items.map(mapApiPostToFeedPost),
+      total: result.total,
+    };
+  } catch {
+    const start = offset;
+    return {
+      items: sharePosts.value.slice(start, start + pageSize),
+      total: sharePosts.value.length,
+    };
+  }
+});
 
 function goDetail(id: string) {
   uni.navigateTo({

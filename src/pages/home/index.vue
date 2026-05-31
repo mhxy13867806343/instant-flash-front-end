@@ -47,12 +47,12 @@
             <view>
               <text class="section-title">最新动态</text>
             </view>
-            <text class="feed-summary__count">{{ filteredPosts.length }} 条内容</text>
+            <text class="feed-summary__count">{{ feedCountLabel }}</text>
           </view>
         </view>
       </template>
 
-      <view v-if="filteredPosts.length" class="feed-list">
+      <view v-if="pagingPosts.length" class="feed-list">
         <post-card
           v-for="post in pagingPosts"
           :key="post.id"
@@ -93,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { onHide, onUnload } from "@dcloudio/uni-app";
 import ContentEmpty from "@/components/content-empty.vue";
 import FeedCommentPopup from "@/components/feed-comment-popup.vue";
@@ -109,11 +109,37 @@ const commentDraft = ref("");
 const replyTarget = ref("");
 const emojiPanelId = ref("");
 const emojis = ["😀", "😍", "👏", "🔥", "👍", "🥹", "🎉", "😄", "🤝", "💯"];
-const { posts, toggleLike, increaseShare, addComment } = useFeed();
+const { posts, loadFeedPage, toggleLike, increaseShare, addComment } = useFeed();
 const { keyword, tabs, activeTab, filteredPosts } = useHomeFeed(posts);
-const { pagingRef, pagingList: pagingPosts, queryList } = usePagingList(filteredPosts);
+const { pagingRef, pagingList: pagingPosts, queryList } = usePagingList(async (pageNo, pageSize) => {
+  const result = await loadFeedPage(pageNo, pageSize);
+  const currentKeyword = keyword.value.trim().toLowerCase();
+  const currentItems =
+    activeTab.value === "最新" ? [...result.items].reverse() : result.items;
+
+  if (!currentKeyword) {
+    return {
+      ...result,
+      items: currentItems,
+    };
+  }
+
+  return {
+    ...result,
+    items: currentItems.filter((item) =>
+      [item.author, item.content, item.location, ...item.topics].some((field) =>
+        field.toLowerCase().includes(currentKeyword)
+      )
+    ),
+  };
+});
 const { openTopicSearch } = useTopicSearch();
 const activeCommentPost = computed(() => posts.value.find((item) => item.id === activeCommentId.value) || null);
+const feedCountLabel = computed(() => `${Math.max(pagingPosts.value.length, filteredPosts.value.length)} 条内容`);
+
+watch([keyword, activeTab], () => {
+  pagingRef.value?.reload();
+});
 
 function goPublish() {
   uni.navigateTo({
@@ -127,12 +153,19 @@ function goDetail(id: string) {
   });
 }
 
-function handleLike(id: string) {
-  const result = toggleLike(id);
-  uni.showToast({
-    title: result.liked ? "已点赞" : "已取消点赞",
-    icon: "none",
-  });
+async function handleLike(id: string) {
+  try {
+    const result = await toggleLike(id);
+    uni.showToast({
+      title: result.liked ? "已点赞" : "已取消点赞",
+      icon: "none",
+    });
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "操作失败",
+      icon: "none",
+    });
+  }
 }
 
 function toggleComment(id: string) {
@@ -153,7 +186,7 @@ function closeCommentPopup() {
   emojiPanelId.value = "";
 }
 
-function submitComment(id: string) {
+async function submitComment(id: string) {
   const content = commentDraft.value.trim();
   if (!content) {
     uni.showToast({
@@ -163,29 +196,43 @@ function submitComment(id: string) {
     return;
   }
 
-  addComment(id, {
-    author: "当前用户",
-    content,
-    replyTo: replyTarget.value || undefined,
-  });
-  commentDraft.value = "";
-  replyTarget.value = "";
-  emojiPanelId.value = "";
-  uni.showToast({
-    title: "评论已发送",
-    icon: "none",
-  });
+  try {
+    await addComment(id, {
+      author: "当前用户",
+      content,
+      replyTo: replyTarget.value || undefined,
+    });
+    commentDraft.value = "";
+    replyTarget.value = "";
+    emojiPanelId.value = "";
+    uni.showToast({
+      title: "评论已发送",
+      icon: "none",
+    });
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "评论失败",
+      icon: "none",
+    });
+  }
 }
 
 function handleShare(id: string) {
   uni.showActionSheet({
     itemList: ["转发给朋友", "复制链接", "生成海报"],
-    success: () => {
-      increaseShare(id);
-      uni.showToast({
-        title: "已分享",
-        icon: "none",
-      });
+    success: async () => {
+      try {
+        await increaseShare(id);
+        uni.showToast({
+          title: "已分享",
+          icon: "none",
+        });
+      } catch (error) {
+        uni.showToast({
+          title: error instanceof Error ? error.message : "分享失败",
+          icon: "none",
+        });
+      }
     },
   });
 }

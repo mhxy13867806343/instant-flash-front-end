@@ -9,7 +9,7 @@
           <text class="login-head__emblem-text">即</text>
         </view>
         <text class="login-head__title">即闪登录</text>
-        <text class="login-head__desc">{{ mode === "quick" ? "微信授权后直接进入" : "请输入手机号和验证码" }}</text>
+        <text class="login-head__desc">{{ mode === "quick" ? "微信授权后直接进入" : "请输入手机号完成登录" }}</text>
       </view>
 
       <view class="login-panel">
@@ -70,7 +70,7 @@
             </u-form-item>
           </u-form>
 
-          <text class="login-form-panel__hint">演示验证码：`123456`</text>
+          <text class="login-form-panel__hint">当前后端未提供验证码接口，开发环境将直接校验手机号登录。</text>
 
           <u-button type="primary" shape="circle" :custom-style="primaryButtonStyle" @click="submit">验证码登录</u-button>
         </view>
@@ -102,9 +102,10 @@ isH5 = true;
 const phone = ref("");
 const code = ref("");
 const previewQuick = ref(false);
+const submitting = ref(false);
 const mode = ref<LoginMode>(isH5 ? "code" : "quick");
 const redirect = ref("/pages/profile/index");
-const { login, finishLoginRedirect, consumePendingRedirect } = useAuth();
+const { login, loginByWeChat, finishLoginRedirect, consumePendingRedirect } = useAuth();
 
 const modeOptions = computed(() =>
   isH5 && !previewQuick.value
@@ -180,14 +181,14 @@ function sendCode() {
   }
 
   uni.showToast({
-    title: "演示验证码 123456",
+    title: "开发环境可直接点击登录",
     icon: "none",
   });
 }
 
-function submit() {
+async function submit() {
   if (mode.value === "quick") {
-    quickLogin();
+    await quickLogin();
     return;
   }
 
@@ -195,25 +196,52 @@ function submit() {
     return;
   }
 
-  if (mode.value === "code" && code.value.trim() !== "123456") {
-    uni.showToast({
-      title: "验证码错误，演示值为123456",
-      icon: "none",
-    });
+  if (submitting.value) {
     return;
   }
 
-  finishLogin();
+  try {
+    submitting.value = true;
+    await finishLogin();
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "登录失败",
+      icon: "none",
+    });
+  } finally {
+    submitting.value = false;
+  }
 }
 
-function quickLogin() {
-  phone.value = "13800138000";
-  code.value = "123456";
-  finishLogin();
+async function quickLogin() {
+  if (submitting.value) {
+    return;
+  }
+  try {
+    submitting.value = true;
+    await loginByWeChat({
+      phone: phone.value || "13800138000",
+      nickname: "即闪用户",
+    });
+    uni.showToast({
+      title: "登录成功",
+      icon: "none",
+    });
+    setTimeout(() => {
+      finishLoginRedirect(redirect.value);
+    }, 220);
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "登录失败",
+      icon: "none",
+    });
+  } finally {
+    submitting.value = false;
+  }
 }
 
-function finishLogin() {
-  login({
+async function finishLogin() {
+  await login({
     phone: phone.value,
     nickname: "即闪用户",
   });

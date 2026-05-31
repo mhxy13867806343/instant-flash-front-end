@@ -59,7 +59,7 @@ const replyTarget = ref("");
 const showEmoji = ref(false);
 const showCommentPopup = ref(false);
 const emojis = ["😀", "😍", "👏", "🔥", "👍", "🥹", "🎉", "😄", "🤝", "💯"];
-const { posts, toggleLike, increaseShare, addComment, markBrowsed } = useFeed();
+const { posts, loadPostComments, loadPostDetail, toggleLike, increaseShare, addComment, markBrowsed } = useFeed();
 const { openTopicSearch } = useTopicSearch();
 
 const post = computed(() => posts.value.find((item) => item.id === postId.value) || null);
@@ -74,24 +74,40 @@ const commentTip = computed(() => {
   return "评论区和首页使用同一份评论数据，新增评论会直接同步回列表。";
 });
 
-onLoad((options) => {
+onLoad(async (options) => {
   postId.value = String(options?.id || "post-001");
   focusType.value = String(options?.focus || "");
   markBrowsed(postId.value);
+  try {
+    await loadPostDetail(postId.value);
+    await loadPostComments(postId.value);
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "动态加载失败",
+      icon: "none",
+    });
+  }
   if (focusType.value === "comment") {
     openCommentPopup();
   }
 });
 
-function handleLike() {
-  const result = toggleLike(postId.value);
-  uni.showToast({
-    title: result.liked ? "已点赞" : "已取消点赞",
-    icon: "none",
-  });
+async function handleLike() {
+  try {
+    const result = await toggleLike(postId.value);
+    uni.showToast({
+      title: result.liked ? "已点赞" : "已取消点赞",
+      icon: "none",
+    });
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "操作失败",
+      icon: "none",
+    });
+  }
 }
 
-function submitComment() {
+async function submitComment() {
   const content = commentDraft.value.trim();
   if (!content) {
     uni.showToast({
@@ -101,29 +117,43 @@ function submitComment() {
     return;
   }
 
-  addComment(postId.value, {
-    author: "当前用户",
-    content,
-    replyTo: replyTarget.value || undefined,
-  });
-  commentDraft.value = "";
-  replyTarget.value = "";
-  showEmoji.value = false;
-  uni.showToast({
-    title: "评论已发送",
-    icon: "none",
-  });
+  try {
+    await addComment(postId.value, {
+      author: "当前用户",
+      content,
+      replyTo: replyTarget.value || undefined,
+    });
+    commentDraft.value = "";
+    replyTarget.value = "";
+    showEmoji.value = false;
+    uni.showToast({
+      title: "评论已发送",
+      icon: "none",
+    });
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "评论失败",
+      icon: "none",
+    });
+  }
 }
 
 function handleShare() {
   uni.showActionSheet({
     itemList: ["转发给朋友", "复制链接", "生成海报"],
-    success: () => {
-      increaseShare(postId.value);
-      uni.showToast({
-        title: "已分享",
-        icon: "none",
-      });
+    success: async () => {
+      try {
+        await increaseShare(postId.value);
+        uni.showToast({
+          title: "已分享",
+          icon: "none",
+        });
+      } catch (error) {
+        uni.showToast({
+          title: error instanceof Error ? error.message : "分享失败",
+          icon: "none",
+        });
+      }
     },
   });
 }

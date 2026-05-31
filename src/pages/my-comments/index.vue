@@ -29,9 +29,11 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { fetchMyComments } from "@/api/user";
 import ContentEmpty from "@/components/content-empty.vue";
 import { useFeed } from "@/hooks/use-feed";
 import { usePagingList } from "@/hooks/use-paging-list";
+import type { ApiComment } from "@/types/api";
 
 const { posts } = useFeed();
 
@@ -46,7 +48,37 @@ const commentItems = computed(() =>
     }))
   )
 );
-const { pagingRef, pagingList: pagingItems, queryList } = usePagingList(commentItems);
+
+function normalizeComments(result: { items?: ApiComment[] } | ApiComment[]) {
+  if (Array.isArray(result)) {
+    return result;
+  }
+  return Array.isArray(result.items) ? result.items : [];
+}
+
+const { pagingRef, pagingList: pagingItems, queryList } = usePagingList(async (pageNo, pageSize) => {
+  const offset = Math.max(pageNo - 1, 0) * pageSize;
+  try {
+    const result = await fetchMyComments({ limit: pageSize, offset });
+    const items = normalizeComments(result).map((comment) => ({
+      id: comment.commentId,
+      postId: comment.postId,
+      postTitle: "我的评论",
+      time: comment.createdAt || "刚刚",
+      content: comment.content,
+    }));
+    return {
+      items,
+      total: items.length,
+    };
+  } catch {
+    const start = offset;
+    return {
+      items: commentItems.value.slice(start, start + pageSize),
+      total: commentItems.value.length,
+    };
+  }
+});
 
 function goDetail(id: string) {
   uni.navigateTo({

@@ -30,15 +30,32 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { fetchMyLikes } from "@/api/user";
 import ContentEmpty from "@/components/content-empty.vue";
 import PostCard from "@/components/post-card.vue";
 import { useFeed } from "@/hooks/use-feed";
 import { usePagingList } from "@/hooks/use-paging-list";
 import { useTopicSearch } from "@/hooks/use-topic-search";
+import { mapApiPostToFeedPost } from "@/utils/post-mapper";
 
 const { posts } = useFeed();
 const likedPosts = computed(() => posts.value.filter((item) => item.liked));
-const { pagingRef, pagingList: pagingPosts, queryList } = usePagingList(likedPosts);
+const { pagingRef, pagingList: pagingPosts, queryList } = usePagingList(async (pageNo, pageSize) => {
+  const offset = Math.max(pageNo - 1, 0) * pageSize;
+  try {
+    const result = await fetchMyLikes({ limit: pageSize, offset });
+    return {
+      items: result.items.map(mapApiPostToFeedPost),
+      total: result.total,
+    };
+  } catch {
+    const start = offset;
+    return {
+      items: likedPosts.value.slice(start, start + pageSize),
+      total: likedPosts.value.length,
+    };
+  }
+});
 const { openTopicSearch } = useTopicSearch();
 
 function goDetail(id: string) {

@@ -69,13 +69,27 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { onShow } from "@dcloudio/uni-app";
 import InstantTabbar from "@/components/instant-tabbar.vue";
 import { useAuth } from "@/hooks/use-auth";
 import { useFeed } from "@/hooks/use-feed";
 import { formatCount } from "@/utils/number";
 
-const { posts, historyPosts } = useFeed();
-const { isLoggedIn, profile, displayName, displayPhone, logout, openLoginPage, ensureLogin } = useAuth();
+const { posts, historyPosts, ensureFeedLoaded } = useFeed();
+const { isLoggedIn, profile, displayName, displayPhone, logout, openLoginPage, ensureLogin, refreshProfile } = useAuth();
+
+onShow(() => {
+  ensureFeedLoaded().catch(() => undefined);
+  if (!isLoggedIn.value) {
+    return;
+  }
+  refreshProfile().catch(() => {
+    uni.showToast({
+      title: "资料同步失败",
+      icon: "none",
+    });
+  });
+});
 
 const profileDesc = computed(() =>
   isLoggedIn.value

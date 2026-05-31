@@ -5,7 +5,7 @@
       <text class="section-desc">头像、昵称、性别和简介都可以在这里统一维护。</text>
 
       <button class="avatar-field" @tap="changeAvatar">
-        <view class="avatar-field__avatar">即</view>
+        <view class="avatar-field__avatar">{{ profile.avatarText }}</view>
         <view class="avatar-field__info">
           <text class="avatar-field__title">修改头像</text>
           <text class="avatar-field__desc">支持拍照上传或从相册选择</text>
@@ -89,7 +89,7 @@ function selectGender() {
   });
 }
 
-function saveProfile() {
+async function saveProfile() {
   const nickname = form.name.trim();
   if (!nickname) {
     uni.showToast({
@@ -99,15 +99,22 @@ function saveProfile() {
     return;
   }
 
-  updateProfile({
-    nickname,
-    gender: form.gender,
-    bio: form.bio,
-  });
-  uni.showToast({
-    title: "资料已保存",
-    icon: "none",
-  });
+  try {
+    await updateProfile({
+      nickname,
+      gender: form.gender,
+      bio: form.bio,
+    });
+    uni.showToast({
+      title: "资料已保存",
+      icon: "none",
+    });
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "保存失败",
+      icon: "none",
+    });
+  }
 }
 </script>
 

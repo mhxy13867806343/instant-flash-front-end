@@ -6,7 +6,18 @@ type PagingRef<T> = {
   reload: () => void;
 };
 
-export function usePagingList<T>(sourceList: Ref<T[]> | ComputedRef<T[]>, delay = 120) {
+type QueryResult<T> = {
+  items: T[];
+  total?: number;
+};
+
+type PagingQuery<T> = (pageNo: number, pageSize: number) => Promise<QueryResult<T>>;
+
+function isQueryMode<T>(source: Ref<T[]> | ComputedRef<T[]> | PagingQuery<T>): source is PagingQuery<T> {
+  return typeof source === "function";
+}
+
+export function usePagingList<T>(sourceList: Ref<T[]> | ComputedRef<T[]> | PagingQuery<T>, delay = 120) {
   const pagingRef = ref<PagingRef<T> | null>(null);
   const pagingList = ref<T[]>([]);
 
@@ -18,6 +29,12 @@ export function usePagingList<T>(sourceList: Ref<T[]> | ComputedRef<T[]>, delay 
   }
 
   async function queryList(pageNo: number, pageSize: number) {
+    if (isQueryMode(sourceList)) {
+      const result = await sourceList(pageNo, pageSize);
+      pagingRef.value?.complete(result.items);
+      return;
+    }
+
     const list = await requestMock(() => {
       const start = Math.max(pageNo - 1, 0) * pageSize;
       return sourceList.value.slice(start, start + pageSize);
@@ -26,12 +43,14 @@ export function usePagingList<T>(sourceList: Ref<T[]> | ComputedRef<T[]>, delay 
     pagingRef.value?.complete(list);
   }
 
-  watch(
-    () => sourceList.value.map((item, index) => getItemKey(item, index)).join("|"),
-    () => {
-      pagingRef.value?.reload();
-    }
-  );
+  if (!isQueryMode(sourceList)) {
+    watch(
+      () => sourceList.value.map((item, index) => getItemKey(item, index)).join("|"),
+      () => {
+        pagingRef.value?.reload();
+      }
+    );
+  }
 
   return {
     pagingRef,

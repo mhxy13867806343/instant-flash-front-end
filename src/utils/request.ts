@@ -4,3 +4,5 @@ export async function requestMock<T>(factory: () => T, delay = 0) {
   }
   return factory();
 }
+
+export { http, httpRequest } from "@/utils/http";

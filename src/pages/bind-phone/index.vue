@@ -63,6 +63,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
+import { useAuth } from "@/hooks/use-auth";
 import { isValidMobilePhone, maskMobilePhone, sanitizeMobilePhone } from "@/utils/phone";
 
 const form = reactive({
@@ -70,8 +71,8 @@ const form = reactive({
   code: "",
 });
 
-const originalPhone = "13800138000";
-const currentPhoneMask = computed(() => maskMobilePhone(originalPhone));
+const { profile } = useAuth();
+const currentPhoneMask = computed(() => maskMobilePhone(profile.value.phone) || "暂未绑定手机号");
 const codeRef = ref<{ start: () => void; reset: () => void } | null>(null);
 const codeTips = ref("获取验证码");
 const counting = ref(false);

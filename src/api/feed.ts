@@ -1,30 +1,26 @@
-import type { FeedComment, FeedPost } from "@/mock/post-data";
-import { feedPosts } from "@/mock/post-data";
-import { requestMock } from "@/utils/request";
+import { http } from "@/utils/request";
+import type { ApiComment, ApiCommentCreatePayload, ApiLikeResponse, ApiPost, ApiPostListResponse } from "@/types/api";
 
-function cloneComment(comment: FeedComment): FeedComment {
-  return {
-    ...comment,
-  };
-}
-
-function clonePost(post: FeedPost): FeedPost {
-  return {
-    ...post,
-    topics: [...post.topics],
-    media: [...post.media],
-    commentList: post.commentList.map(cloneComment),
-  };
-}
-
-export function createFeedSeed() {
-  return feedPosts.map(clonePost);
-}
-
-export function fetchFeedList() {
-  return requestMock(() => createFeedSeed(), 120);
+export function fetchFeedList(params: { limit: number; offset: number }) {
+  return http.get<ApiPostListResponse>("/api/posts", params);
 }
 
 export function fetchFeedDetail(id: string) {
-  return requestMock(() => createFeedSeed().find((item) => item.id === id) || null, 120);
+  return http.get<ApiPost>(`/api/posts/${id}`);
+}
+
+export function fetchFeedComments(id: string) {
+  return http.get<ApiComment[]>(`/api/posts/${id}/comments`);
+}
+
+export function createFeedComment(id: string, payload: ApiCommentCreatePayload) {
+  return http.post<ApiComment>(`/api/posts/${id}/comments`, payload);
+}
+
+export function toggleFeedLike(id: string) {
+  return http.post<ApiLikeResponse>(`/api/posts/${id}/like`);
+}
+
+export function createFeedShare(id: string) {
+  return http.post(`/api/posts/${id}/share`, {});
 }
