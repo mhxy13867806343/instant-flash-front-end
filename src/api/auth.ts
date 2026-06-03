@@ -6,6 +6,7 @@ type DevTokenPayload = {
   openid?: string;
   unionid?: string;
   phone?: string;
+  code?: string;
   nickname?: string;
   avatar?: string;
 };
@@ -16,4 +17,8 @@ export function fetchDevToken(payload: DevTokenPayload = {}) {
 
 export function loginWithWeChat(payload: ApiWxLoginPayload) {
   return http.post<ApiWxLoginResponse>("/api/auth/wx-login", payload);
+}
+
+export function logoutAuth() {
+  return http.post<{ message?: string }>("/api/auth/logout", {});
 }

@@ -1,5 +1,5 @@
 import { computed, ref } from "vue";
-import { fetchDevToken, loginWithWeChat as wxLogin } from "@/api/auth";
+import { fetchDevToken, loginWithWeChat as wxLogin, logoutAuth } from "@/api/auth";
 import { fetchMyProfile, updateMyProfile } from "@/api/user";
 import { API_BASE_URL } from "@/config/env";
 import { AUTH_REDIRECT_STORAGE_KEY, AUTH_TOKEN_STORAGE_KEY } from "@/constants/storage";
@@ -9,6 +9,7 @@ export type AuthProfile = {
   userId: string;
   nickname: string;
   phone: string;
+  newPhone: string;
   avatar: string;
   avatarText: string;
   gender: "男" | "女" | "保密";
@@ -28,6 +29,7 @@ type AuthProfileSource = {
   userId?: string | null;
   nickname?: string | null;
   phone?: string | null;
+  newPhone?: string | null;
   avatar?: string | null;
   avatarText?: string | null;
   gender?: string | null;
@@ -49,6 +51,7 @@ const defaultProfile: AuthProfile = {
   userId: "",
   nickname: "即闪用户",
   phone: "",
+  newPhone: "",
   avatar: "",
   avatarText: "即",
   gender: "保密",
@@ -62,6 +65,7 @@ const guestProfile: AuthProfile = {
   userId: "",
   nickname: "未登录",
   phone: "",
+  newPhone: "",
   avatar: "",
   avatarText: "游",
   gender: "保密",
@@ -100,12 +104,14 @@ function normalizeAvatarUrl(url?: string | null): string {
 function buildAuthProfile(source?: AuthProfileSource | null, fallback?: Partial<AuthProfile>): AuthProfile {
   const nickname = String(source?.nickname || fallback?.nickname || defaultProfile.nickname).trim() || defaultProfile.nickname;
   const phone = String(source?.phone || fallback?.phone || "");
+  const newPhone = String(source?.newPhone || fallback?.newPhone || "");
   const bio = String(source?.bio || source?.signature || fallback?.bio || "");
 
   return {
     userId: String(source?.userId || fallback?.userId || ""),
     nickname,
     phone,
+    newPhone,
     avatar: normalizeAvatarUrl(source?.avatar || fallback?.avatar),
     avatarText: getAvatarText(nickname),
     gender: normalizeGender(source?.gender || fallback?.gender),
@@ -180,31 +186,26 @@ export function useAuth() {
     return isValidMobilePhone(profile.value.phone) ? maskMobilePhone(profile.value.phone) : profile.value.phone;
   });
 
-  async function login(payload: { phone: string; nickname?: string }) {
-    const normalizedPhone = payload.phone.replace(/\D/g, "") || "13800138000";
-    const fallbackProfile = buildAuthProfile({
+  async function login(payload: { phone: string; code?: string; nickname?: string }) {
+    const normalizedPhone = payload.phone.replace(/\D/g, "");
+    if (!normalizedPhone) {
+      throw new Error("请输入手机号");
+    }
+
+    const result = await fetchDevToken({
+      userId: `h5-${normalizedPhone}`,
+      phone: normalizedPhone,
+      code: payload.code || "123456",
+      nickname: payload.nickname?.trim() || defaultProfile.nickname,
+    });
+    token.value = result.accessToken;
+    persistState();
+    profile.value = await resolveProfileFromServer({
+      userId: result.userId,
       phone: normalizedPhone,
       nickname: payload.nickname?.trim() || defaultProfile.nickname,
-      bio: defaultProfile.bio,
     });
-    try {
-      const result = await fetchDevToken({
-        userId: `h5-${normalizedPhone}`,
-        nickname: payload.nickname?.trim() || defaultProfile.nickname,
-      });
-      token.value = result.accessToken;
-      profile.value = await resolveProfileFromServer({
-        userId: result.userId,
-        phone: normalizedPhone,
-        nickname: payload.nickname?.trim() || defaultProfile.nickname,
-        bio: defaultProfile.bio,
-      });
-    } catch {
-      token.value = "";
-      profile.value = fallbackProfile;
-    }
     isLoggedIn.value = true;
-    persistState();
   }
 
   async function loginByWeChat(payload?: { nickname?: string; avatar?: string; phone?: string; gender?: string }) {
@@ -292,7 +293,13 @@ export function useAuth() {
     persistState();
   }
 
-  function logout() {
+  async function logout() {
+    // 先调后端登出接口（即使失败也继续清本地）
+    try {
+      await logoutAuth();
+    } catch {
+      // ignore
+    }
     isLoggedIn.value = false;
     token.value = "";
     profile.value = guestProfile;

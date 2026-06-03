@@ -196,6 +196,14 @@ async function submit() {
     return;
   }
 
+  if (!code.value.trim()) {
+    uni.showToast({
+      title: "请输入验证码",
+      icon: "none",
+    });
+    return;
+  }
+
   if (submitting.value) {
     return;
   }
@@ -243,6 +251,7 @@ async function quickLogin() {
 async function finishLogin() {
   await login({
     phone: phone.value,
+    code: code.value || "123456",
     nickname: "即闪用户",
   });
   uni.showToast({

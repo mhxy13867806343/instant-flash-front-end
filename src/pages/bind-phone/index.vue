@@ -9,7 +9,13 @@
         <text class="current-phone__value">{{ currentPhoneMask }}</text>
       </view>
 
-      <u-form :model="form" label-position="top" :border-bottom="false">
+      <view v-if="hasPendingNewPhone" class="pending-phone">
+        <text class="pending-phone__label">待绑定的新手机号</text>
+        <text class="pending-phone__value">{{ pendingPhoneMask }}</text>
+        <text class="pending-phone__hint">已存在待绑定的新手机号，无法再次提交。如需更换请联系客服或先解除待绑定状态。</text>
+      </view>
+
+      <u-form v-else :model="form" label-position="top" :border-bottom="false">
         <u-form-item label="新手机号" required>
           <u-input
             v-model="form.phone"
@@ -51,10 +57,11 @@
       <u-button
         type="primary"
         shape="circle"
+        :disabled="hasPendingNewPhone"
         :custom-style="submitButtonStyle"
         @click="bindPhone"
       >
-        确认绑定
+        {{ hasPendingNewPhone ? "已存在待绑定手机号" : "确认绑定" }}
       </u-button>
       <u-verification-code ref="codeRef" :seconds="60" @change="handleCodeChange" @end="handleCodeEnd" />
     </view>
@@ -63,6 +70,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
+import { onShow } from "@dcloudio/uni-app";
 import { useAuth } from "@/hooks/use-auth";
 import { bindMyPhone } from "@/api/user";
 import { isValidMobilePhone, maskMobilePhone, sanitizeMobilePhone } from "@/utils/phone";
@@ -74,10 +82,17 @@ const form = reactive({
 
 const { profile, refreshProfile } = useAuth();
 const currentPhoneMask = computed(() => maskMobilePhone(profile.value.phone) || "暂未绑定手机号");
+const hasPendingNewPhone = computed(() => Boolean(profile.value.newPhone));
+const pendingPhoneMask = computed(() => maskMobilePhone(profile.value.newPhone) || profile.value.newPhone);
 const codeRef = ref<{ start: () => void; reset: () => void } | null>(null);
 const codeTips = ref("获取验证码");
 const counting = ref(false);
 const lastSentPhone = ref("");
+
+// 进页面拉取最新 profile
+onShow(() => {
+  refreshProfile().catch(() => {});
+});
 
 const inputStyle = {
   minHeight: "88rpx",
@@ -87,7 +102,9 @@ const inputStyle = {
 };
 
 const isValidPhone = computed(() => isValidMobilePhone(form.phone));
-const canSubmit = computed(() => isValidPhone.value && form.code.trim().length > 0 && form.phone === lastSentPhone.value);
+const canSubmit = computed(
+  () => !hasPendingNewPhone.value && isValidPhone.value && form.code.trim().length > 0 && form.phone === lastSentPhone.value
+);
 const codeButtonStyle = computed(() => ({
   width: "220rpx",
   height: "88rpx",
@@ -131,6 +148,10 @@ function validatePhone() {
 }
 
 function sendCode() {
+  if (hasPendingNewPhone.value) {
+    uni.showToast({ title: "已存在待绑定的新手机号", icon: "none" });
+    return;
+  }
   if (counting.value) {
     uni.showToast({
       title: "验证码发送中，请稍后",
@@ -160,6 +181,10 @@ function handleCodeEnd() {
 }
 
 async function bindPhone() {
+  if (hasPendingNewPhone.value) {
+    uni.showToast({ title: "已存在待绑定的新手机号", icon: "none" });
+    return;
+  }
   if (!validatePhone()) return;
   if (form.phone !== lastSentPhone.value) {
     uni.showToast({
@@ -269,5 +294,31 @@ watch(
   font-size: 28rpx;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+.pending-phone {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding: 24rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 107, 74, 0.08);
+}
+
+.pending-phone__label {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.pending-phone__value {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--brand-primary);
+}
+
+.pending-phone__hint {
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: var(--text-tertiary);
 }
 </style>

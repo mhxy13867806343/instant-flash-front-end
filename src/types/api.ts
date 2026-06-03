@@ -20,6 +20,7 @@ export type ApiUserProfile = {
   openid?: string | null;
   unionid?: string | null;
   phone?: string | null;
+  newPhone?: string | null;
   nickname?: string | null;
   avatar?: string | null;
   gender?: string | null;

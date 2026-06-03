@@ -23,8 +23,12 @@
         <button class="profile-card__action profile-card__action--primary" @tap="handlePrimaryAction">
           {{ isLoggedIn ? "编辑资料" : "去登录" }}
         </button>
-        <button class="profile-card__action profile-card__action--secondary" @tap="handleSecondaryAction">
-        {{ isLoggedIn ? "绑定手机" : "去登录" }}
+        <button
+          v-if="!isLoggedIn || !profile.newPhone"
+          class="profile-card__action profile-card__action--secondary"
+          @tap="handleSecondaryAction"
+        >
+          {{ isLoggedIn ? "绑定手机" : "去登录" }}
         </button>
       </view>
     </view>
@@ -82,6 +86,8 @@ const { isLoggedIn, profile, displayName, displayPhone, logout, openLoginPage, e
 
 onShow(() => {
   if (!isLoggedIn.value) {
+    // 未登录直接跳登录页
+    openLoginPage("/pages/profile/index");
     return;
   }
   refreshProfile().catch(() => {
@@ -299,13 +305,13 @@ function editAvatar() {
 }
 
 .profile-card__actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
   gap: 16rpx;
 }
 
 .profile-card__action {
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
   height: 84rpx;
