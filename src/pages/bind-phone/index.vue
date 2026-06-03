@@ -185,7 +185,6 @@ async function bindPhone() {
 
   try {
     await bindMyPhone({
-      oldPhone: profile.value.phone,
       newPhone: form.phone,
       code: form.code,
     });
