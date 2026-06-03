@@ -184,7 +184,11 @@ async function bindPhone() {
   }
 
   try {
-    await bindMyPhone({ phone: form.phone, code: form.code });
+    await bindMyPhone({
+      oldPhone: profile.value.phone,
+      newPhone: form.phone,
+      code: form.code,
+    });
     // 绑定成功后刷新 profile 同步最新手机号
     await refreshProfile();
     uni.showToast({

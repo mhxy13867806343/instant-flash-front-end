@@ -11,7 +11,7 @@ export function updateMyProfile(payload: ApiUserProfileUpdate) {
   return http.put<ApiUserProfile>("/api/user/profile", payload);
 }
 
-export function bindMyPhone(payload: { phone: string; code: string }) {
+export function bindMyPhone(payload: { oldPhone: string; newPhone: string; code: string }) {
   return http.post<ApiUserProfile>("/api/user/bindPhone", payload);
 }
 
