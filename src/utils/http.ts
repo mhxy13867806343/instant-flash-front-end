@@ -44,7 +44,7 @@ export async function httpRequest<T>(url: string, options: RequestOptions = {}) 
     response = await uni.request({
       url: `${API_BASE_URL}${url}`,
       method: options.method || "GET",
-      data: options.data,
+      data: options.data as string | AnyObject | ArrayBuffer | undefined,
       timeout: options.timeout || 15000,
       header: {
         Accept: "application/json",
@@ -59,6 +59,7 @@ export async function httpRequest<T>(url: string, options: RequestOptions = {}) 
 
   const statusCode = response.statusCode || 500;
 
+  // 检查 HTTP 状态码
   if (statusCode === 401) {
     clearAuthAndRedirect();
     throw new Error(extractErrorMessage(response.data));
@@ -66,6 +67,19 @@ export async function httpRequest<T>(url: string, options: RequestOptions = {}) 
 
   if (statusCode >= 400) {
     throw new Error(extractErrorMessage(response.data));
+  }
+
+  // 检查 body 里的业务状态码（后端可能返回 HTTP 200 但 body.code = 401）
+  if (typeof response.data === "object" && response.data !== null) {
+    const body = response.data as Record<string, unknown>;
+    const bodyCode = typeof body.code === "number" ? body.code : 0;
+    if (bodyCode === 401) {
+      clearAuthAndRedirect();
+      throw new Error(extractErrorMessage(response.data));
+    }
+    if (bodyCode >= 400) {
+      throw new Error(extractErrorMessage(response.data));
+    }
   }
 
   return response.data as T;
