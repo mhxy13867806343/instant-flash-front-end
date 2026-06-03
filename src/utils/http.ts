@@ -14,16 +14,23 @@ function getStoredToken() {
   return String(uni.getStorageSync(AUTH_TOKEN_STORAGE_KEY) || "");
 }
 
+let isRedirectingToLogin = false;
+
 function clearAuthAndRedirect() {
   uni.removeStorageSync(AUTH_TOKEN_STORAGE_KEY);
-  // 避免重复跳转
+  if (isRedirectingToLogin) return;
+  isRedirectingToLogin = true;
+
   const pages = getCurrentPages();
   const currentPath = pages.length ? pages[pages.length - 1].route : "";
   if (currentPath !== "pages/login/index") {
-    uni.showToast({ title: "登录已过期，请重新登录", icon: "none" });
+    uni.showToast({ title: "登录已过期，请重新登录", icon: "none", duration: 1500 });
     setTimeout(() => {
-      uni.navigateTo({ url: "/pages/login/index" });
-    }, 1000);
+      isRedirectingToLogin = false;
+      uni.reLaunch({ url: "/pages/login/index" });
+    }, 1500);
+  } else {
+    isRedirectingToLogin = false;
   }
 }
 
