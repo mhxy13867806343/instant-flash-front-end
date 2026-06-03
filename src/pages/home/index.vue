@@ -5,7 +5,7 @@
       v-model="pagingPosts"
       class="home-page__paging"
       :fixed="false"
-      :default-page-size="2"
+      :default-page-size="10"
       @query="queryList"
     >
       <template #top>
@@ -76,11 +76,17 @@
       :show="Boolean(activeCommentPost)"
       :post="activeCommentPost"
       :draft="commentDraft"
-      :reply-target="replyTarget"
+      :reply-target-id="replyTarget?.id || ''"
+      :reply-target-name="replyTarget?.author || ''"
       :show-emoji="emojiPanelId === activeCommentId"
       :emojis="emojis"
+      :has-more="commentHasMore"
+      :loading-more="commentLoadingMore"
       @close="closeCommentPopup"
       @reply="replyToComment(activeCommentId, $event)"
+      @like-comment="handleCommentLike(activeCommentId, $event)"
+      @expand-replies="handleExpandReplies(activeCommentId, $event)"
+      @load-more="handleLoadMoreComments"
       @clear-reply="clearReply"
       @update:draft="commentDraft = $event"
       @toggle-emoji="toggleEmoji(activeCommentId)"
@@ -99,6 +105,8 @@ import ContentEmpty from "@/components/content-empty.vue";
 import FeedCommentPopup from "@/components/feed-comment-popup.vue";
 import InstantTabbar from "@/components/instant-tabbar.vue";
 import PostCard from "@/components/post-card.vue";
+import type { FeedComment } from "@/mock/post-data";
+import { useAuth } from "@/hooks/use-auth";
 import { useFeed } from "@/hooks/use-feed";
 import { useHomeFeed } from "@/hooks/use-home-feed";
 import { usePagingList } from "@/hooks/use-paging-list";
@@ -106,35 +114,25 @@ import { useTopicSearch } from "@/hooks/use-topic-search";
 
 const activeCommentId = ref("");
 const commentDraft = ref("");
-const replyTarget = ref("");
+const replyTarget = ref<FeedComment | null>(null);
 const emojiPanelId = ref("");
+const commentPageSize = 10;
+const commentLoaded = ref(0);
+const commentTotal = ref(0);
+const commentLoadingMore = ref(false);
 const emojis = ["😀", "😍", "👏", "🔥", "👍", "🥹", "🎉", "😄", "🤝", "💯"];
-const { posts, loadFeedPage, toggleLike, increaseShare, addComment } = useFeed();
+const { ensureLogin } = useAuth();
+const { posts, loadFeedPage, loadPostComments, loadCommentReplies, toggleLike, increaseShare, addComment, toggleCommentLike } = useFeed();
 const { keyword, tabs, activeTab, filteredPosts } = useHomeFeed(posts);
 const { pagingRef, pagingList: pagingPosts, queryList } = usePagingList(async (pageNo, pageSize) => {
-  const result = await loadFeedPage(pageNo, pageSize);
-  const currentKeyword = keyword.value.trim().toLowerCase();
-  const currentItems =
-    activeTab.value === "最新" ? [...result.items].reverse() : result.items;
-
-  if (!currentKeyword) {
-    return {
-      ...result,
-      items: currentItems,
-    };
-  }
-
-  return {
-    ...result,
-    items: currentItems.filter((item) =>
-      [item.author, item.content, item.location, ...item.topics].some((field) =>
-        field.toLowerCase().includes(currentKeyword)
-      )
-    ),
-  };
-});
+  const tab = activeTab.value === "最新" ? "latest" : "recommend";
+  const currentKeyword = keyword.value.trim() || null;
+  const result = await loadFeedPage(pageNo, pageSize, { tab, keyword: currentKeyword });
+  return result;
+}, posts);
 const { openTopicSearch } = useTopicSearch();
 const activeCommentPost = computed(() => posts.value.find((item) => item.id === activeCommentId.value) || null);
+const commentHasMore = computed(() => commentLoaded.value < commentTotal.value);
 const feedCountLabel = computed(() => `${Math.max(pagingPosts.value.length, filteredPosts.value.length)} 条内容`);
 
 watch([keyword, activeTab], () => {
@@ -142,6 +140,9 @@ watch([keyword, activeTab], () => {
 });
 
 function goPublish() {
+  if (!ensureLogin("/pages/publish/index", { content: "登录后才可以发布动态，是否现在去登录？" })) {
+    return;
+  }
   uni.navigateTo({
     url: "/pages/publish/index",
   });
@@ -175,13 +176,21 @@ function toggleComment(id: string) {
   }
 
   activeCommentId.value = id;
-  replyTarget.value = "";
+  replyTarget.value = null;
   emojiPanelId.value = "";
+  commentLoaded.value = 0;
+  commentTotal.value = 0;
+
+  // 打开评论弹窗时加载第一页评论
+  loadPostComments(id, { limit: commentPageSize, offset: 0 }).then((result) => {
+    commentLoaded.value = result.items.length;
+    commentTotal.value = result.total;
+  }).catch(() => {});
 }
 
 function closeCommentPopup() {
   commentDraft.value = "";
-  replyTarget.value = "";
+  replyTarget.value = null;
   activeCommentId.value = "";
   emojiPanelId.value = "";
 }
@@ -198,12 +207,12 @@ async function submitComment(id: string) {
 
   try {
     await addComment(id, {
-      author: "当前用户",
       content,
-      replyTo: replyTarget.value || undefined,
+      parentId: replyTarget.value?.parentId || replyTarget.value?.id,
+      replyToUserId: replyTarget.value?.userId,
     });
     commentDraft.value = "";
-    replyTarget.value = "";
+    replyTarget.value = null;
     emojiPanelId.value = "";
     uni.showToast({
       title: "评论已发送",
@@ -241,9 +250,35 @@ function handleTopicClick(topic: string) {
   openTopicSearch(topic);
 }
 
-function replyToComment(postId: string, author: string) {
+function replyToComment(postId: string, comment: FeedComment) {
   activeCommentId.value = postId;
-  replyTarget.value = author;
+  replyTarget.value = comment;
+}
+
+function handleCommentLike(postId: string, comment: FeedComment) {
+  toggleCommentLike(postId, comment.id);
+}
+
+async function handleLoadMoreComments() {
+  if (commentLoadingMore.value || !commentHasMore.value) return;
+  commentLoadingMore.value = true;
+  try {
+    const result = await loadPostComments(activeCommentId.value, {
+      limit: commentPageSize,
+      offset: commentLoaded.value,
+      append: true,
+    });
+    commentLoaded.value += result.items.length;
+    commentTotal.value = result.total;
+  } finally {
+    commentLoadingMore.value = false;
+  }
+}
+
+async function handleExpandReplies(postId: string, comment: FeedComment) {
+  // 请求该顶层评论的全部回复
+  const currentChildren = (comment.children || []).length;
+  await loadCommentReplies(postId, comment.id, { limit: 10, offset: currentChildren });
 }
 
 function clearReply() {
@@ -252,7 +287,7 @@ function clearReply() {
   }
 
   if (!commentDraft.value.trim()) {
-    replyTarget.value = "";
+    replyTarget.value = null;
     return;
   }
 
@@ -264,7 +299,7 @@ function clearReply() {
     success: ({ confirm }) => {
       if (confirm) {
         commentDraft.value = "";
-        replyTarget.value = "";
+        replyTarget.value = null;
         emojiPanelId.value = "";
         uni.showToast({
           title: "已清空",
@@ -286,7 +321,7 @@ function appendEmoji(emoji: string) {
 function resetCommentDraft() {
   activeCommentId.value = "";
   commentDraft.value = "";
-  replyTarget.value = "";
+  replyTarget.value = null;
   emojiPanelId.value = "";
 }
 

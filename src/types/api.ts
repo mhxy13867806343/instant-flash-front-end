@@ -23,6 +23,8 @@ export type ApiUserProfile = {
   nickname?: string | null;
   avatar?: string | null;
   gender?: string | null;
+  bio?: string | null;
+  signature?: string | null;
   province?: string | null;
   city?: string | null;
   district?: string | null;
@@ -36,6 +38,7 @@ export type ApiUserProfileUpdate = {
   nickname?: string | null;
   avatar?: string | null;
   gender?: string | null;
+  signature?: string | null;
   province?: string | null;
   city?: string | null;
   district?: string | null;
@@ -56,6 +59,11 @@ export type ApiPost = {
   avatar?: string | null;
   content: string;
   images: unknown[];
+  location?: string | null;
+  province?: string | null;
+  city?: string | null;
+  district?: string | null;
+  topics?: string[] | null;
   likeCount: number;
   commentCount: number;
   shareCount: number;
@@ -66,6 +74,21 @@ export type ApiPost = {
   canDelete?: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ApiPostListParams = {
+  limit: number;
+  offset: number;
+  page?: number | null;
+  pageSize?: number | null;
+  tab?: string | null;
+  sort?: string | null;
+  mode?: string | null;
+  keyword?: string | null;
+  province?: string | null;
+  city?: string | null;
+  district?: string | null;
+  location?: string | null;
 };
 
 export type ApiPostListResponse = {
@@ -79,9 +102,17 @@ export type ApiComment = {
   commentId: string;
   postId: string;
   userId: string;
+  nickname?: string | null;
+  avatar?: string | null;
   content: string;
   parentId?: string | null;
   replyToUserId?: string | null;
+  replyToNickname?: string | null;
+  replyCount?: number;
+  likeCount?: number;
+  isLiked?: boolean;
+  children?: ApiComment[] | null;
+  replies?: ApiComment[] | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -90,6 +121,15 @@ export type ApiCommentCreatePayload = {
   content: string;
   parentId?: string;
   replyToUserId?: string;
+};
+
+export type ApiCommentListResponse = {
+  items: ApiComment[];
+  total: number;
+  commentTotal?: number;
+  hasMore?: boolean;
+  limit: number;
+  offset: number;
 };
 
 export type ApiLikeResponse = {

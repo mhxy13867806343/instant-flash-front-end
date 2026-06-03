@@ -5,7 +5,7 @@
       v-model="pagingPosts"
       class="my-likes-page__paging"
       :fixed="false"
-      :default-page-size="1"
+      :default-page-size="10"
       @query="queryList"
     >
       <view v-if="likedPosts.length" class="my-likes-list">

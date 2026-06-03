@@ -16,10 +16,16 @@
         <feed-comment-panel
           :post="post"
           :draft="draft"
-          :reply-target="replyTarget"
+          :reply-target-id="replyTargetId"
+          :reply-target-name="replyTargetName"
           :show-emoji="showEmoji"
           :emojis="emojis"
+          :has-more="hasMore"
+          :loading-more="loadingMore"
           @reply="emit('reply', $event)"
+          @like-comment="emit('like-comment', $event)"
+          @expand-replies="emit('expand-replies', $event)"
+          @load-more="emit('load-more')"
           @clear-reply="emit('clear-reply')"
           @update:draft="emit('update:draft', $event)"
           @toggle-emoji="emit('toggle-emoji')"
@@ -33,20 +39,32 @@
 
 <script setup lang="ts">
 import FeedCommentPanel from "@/components/feed-comment-panel.vue";
-import type { FeedPost } from "@/mock/post-data";
+import type { FeedComment, FeedPost } from "@/mock/post-data";
 
-defineProps<{
-  show: boolean;
-  post: FeedPost | null;
-  draft: string;
-  replyTarget: string;
-  showEmoji: boolean;
-  emojis: string[];
-}>();
+withDefaults(
+  defineProps<{
+    show: boolean;
+    post: FeedPost | null;
+    draft: string;
+    replyTargetId: string;
+    replyTargetName: string;
+    showEmoji: boolean;
+    emojis: string[];
+    hasMore?: boolean;
+    loadingMore?: boolean;
+  }>(),
+  {
+    hasMore: false,
+    loadingMore: false,
+  }
+);
 
 const emit = defineEmits<{
   close: [];
-  reply: [author: string];
+  reply: [comment: FeedComment];
+  "like-comment": [comment: FeedComment];
+  "expand-replies": [comment: FeedComment];
+  "load-more": [];
   "clear-reply": [];
   "update:draft": [value: string];
   "toggle-emoji": [];

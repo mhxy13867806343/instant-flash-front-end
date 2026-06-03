@@ -3,7 +3,8 @@
     <view class="profile-card card-shell">
       <view class="profile-card__main">
         <button class="profile-card__avatar" @tap="editAvatar">
-          <text class="profile-card__avatar-text">{{ profile.avatarText }}</text>
+          <image v-if="profile.avatar" class="profile-card__avatar-img" :src="profile.avatar" mode="aspectFill" />
+          <text v-else class="profile-card__avatar-text">{{ profile.avatarText }}</text>
         </button>
         <view class="profile-card__info">
           <text class="profile-card__name">{{ displayName }}</text>
@@ -23,7 +24,7 @@
           {{ isLoggedIn ? "编辑资料" : "去登录" }}
         </button>
         <button class="profile-card__action profile-card__action--secondary" @tap="handleSecondaryAction">
-          {{ isLoggedIn ? "绑定手机" : "看看登录页" }}
+        {{ isLoggedIn ? "绑定手机" : "去登录" }}
         </button>
       </view>
     </view>
@@ -33,7 +34,7 @@
         v-for="item in stats"
         :key="item.label"
         class="stat-card card-shell"
-        @tap="go(item.path)"
+        @tap="go(item.path, true)"
       >
         <text class="stat-card__value">{{ item.value }}</text>
         <text class="stat-card__label">{{ item.label }}</text>
@@ -72,14 +73,14 @@ import { computed } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import InstantTabbar from "@/components/instant-tabbar.vue";
 import { useAuth } from "@/hooks/use-auth";
+import { uploadAvatar } from "@/api/user";
 import { useFeed } from "@/hooks/use-feed";
 import { formatCount } from "@/utils/number";
 
-const { posts, historyPosts, ensureFeedLoaded } = useFeed();
+const { posts, historyPosts } = useFeed();
 const { isLoggedIn, profile, displayName, displayPhone, logout, openLoginPage, ensureLogin, refreshProfile } = useAuth();
 
 onShow(() => {
-  ensureFeedLoaded().catch(() => undefined);
   if (!isLoggedIn.value) {
     return;
   }
@@ -121,16 +122,14 @@ function go(url: string, requiresLogin = false) {
 }
 
 function handlePrimaryAction() {
-  if (!isLoggedIn.value) {
-    openLoginPage();
+  if (!ensureLogin("/pages/profile/index", { content: "登录后才可以编辑资料，是否现在去登录？" })) {
     return;
   }
   go("/pages/edit-profile/index", true);
 }
 
 function handleSecondaryAction() {
-  if (!isLoggedIn.value) {
-    openLoginPage();
+  if (!ensureLogin("/pages/profile/index", { content: "登录后才可以绑定手机号，是否现在去登录？" })) {
     return;
   }
   go("/pages/bind-phone/index", true);
@@ -155,7 +154,7 @@ function handleLogout() {
 }
 
 function editAvatar() {
-  if (!ensureLogin("/pages/edit-profile/index?focus=avatar")) {
+  if (!ensureLogin("/pages/edit-profile/index?focus=avatar", { content: "登录后才可以修改头像，是否现在去登录？" })) {
     return;
   }
   uni.showActionSheet({
@@ -165,9 +164,29 @@ function editAvatar() {
         go("/pages/edit-profile/index?focus=avatar");
         return;
       }
-      uni.showToast({
-        title: tapIndex === 0 ? "已打开拍照入口" : "已打开相册入口",
-        icon: "none",
+      const sourceType = tapIndex === 0 ? ["camera"] : ["album"];
+      uni.chooseImage({
+        count: 1,
+        sourceType: sourceType as ("camera" | "album")[],
+        sizeType: ["compressed"],
+        extension: [".jpg", ".jpeg", ".png", ".webp", ".gif"],
+        success: async (res) => {
+          const filePath = res.tempFilePaths[0];
+          if (!filePath) return;
+          uni.showLoading({ title: "上传中..." });
+          try {
+            await uploadAvatar(filePath);
+            uni.hideLoading();
+            await refreshProfile();
+            uni.showToast({ title: "头像已更新", icon: "none" });
+          } catch (error) {
+            uni.hideLoading();
+            uni.showToast({
+              title: error instanceof Error ? error.message : "上传失败",
+              icon: "none",
+            });
+          }
+        },
       });
     },
   });
@@ -214,6 +233,12 @@ function editAvatar() {
   font-weight: 700;
   color: #fff;
   background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+}
+
+.profile-card__avatar-img {
+  width: 108rpx;
+  height: 108rpx;
+  border-radius: 50%;
 }
 
 .profile-card__info {

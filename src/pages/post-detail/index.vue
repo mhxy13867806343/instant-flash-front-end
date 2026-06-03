@@ -29,11 +29,17 @@
       :show="showCommentPopup"
       :post="post"
       :draft="commentDraft"
-      :reply-target="replyTarget"
+      :reply-target-id="replyTarget?.id || ''"
+      :reply-target-name="replyTarget?.author || ''"
       :show-emoji="showEmoji"
       :emojis="emojis"
+      :has-more="commentHasMore"
+      :loading-more="commentLoadingMore"
       @close="closeCommentPopup"
       @reply="replyToComment"
+      @like-comment="handleCommentLike"
+      @expand-replies="handleExpandReplies"
+      @load-more="handleLoadMoreComments"
       @clear-reply="clearReply"
       @update:draft="commentDraft = $event"
       @toggle-emoji="toggleEmoji"
@@ -49,20 +55,26 @@ import { onLoad } from "@dcloudio/uni-app";
 import FeedCommentState from "@/components/feed-comment-state.vue";
 import FeedCommentPopup from "@/components/feed-comment-popup.vue";
 import PostCard from "@/components/post-card.vue";
+import type { FeedComment } from "@/mock/post-data";
 import { useFeed } from "@/hooks/use-feed";
 import { useTopicSearch } from "@/hooks/use-topic-search";
 
 const postId = ref("post-001");
 const focusType = ref("");
 const commentDraft = ref("");
-const replyTarget = ref("");
+const replyTarget = ref<FeedComment | null>(null);
 const showEmoji = ref(false);
 const showCommentPopup = ref(false);
+const commentPageSize = 10;
+const commentLoaded = ref(0);
+const commentTotal = ref(0);
+const commentLoadingMore = ref(false);
 const emojis = ["😀", "😍", "👏", "🔥", "👍", "🥹", "🎉", "😄", "🤝", "💯"];
-const { posts, loadPostComments, loadPostDetail, toggleLike, increaseShare, addComment, markBrowsed } = useFeed();
+const { posts, loadPostComments, loadCommentReplies, loadPostDetail, toggleLike, increaseShare, addComment, toggleCommentLike, markBrowsed } = useFeed();
 const { openTopicSearch } = useTopicSearch();
 
 const post = computed(() => posts.value.find((item) => item.id === postId.value) || null);
+const commentHasMore = computed(() => commentLoaded.value < commentTotal.value);
 
 const commentTip = computed(() => {
   if (focusType.value === "comment") {
@@ -80,7 +92,9 @@ onLoad(async (options) => {
   markBrowsed(postId.value);
   try {
     await loadPostDetail(postId.value);
-    await loadPostComments(postId.value);
+    const result = await loadPostComments(postId.value, { limit: commentPageSize, offset: 0 });
+    commentLoaded.value = result.items.length;
+    commentTotal.value = result.total;
   } catch (error) {
     uni.showToast({
       title: error instanceof Error ? error.message : "动态加载失败",
@@ -119,12 +133,12 @@ async function submitComment() {
 
   try {
     await addComment(postId.value, {
-      author: "当前用户",
       content,
-      replyTo: replyTarget.value || undefined,
+      parentId: replyTarget.value?.parentId || replyTarget.value?.id,
+      replyToUserId: replyTarget.value?.userId,
     });
     commentDraft.value = "";
-    replyTarget.value = "";
+    replyTarget.value = null;
     showEmoji.value = false;
     uni.showToast({
       title: "评论已发送",
@@ -168,13 +182,38 @@ function openCommentPopup() {
 
 function closeCommentPopup() {
   commentDraft.value = "";
-  replyTarget.value = "";
+  replyTarget.value = null;
   showCommentPopup.value = false;
   showEmoji.value = false;
 }
 
-function replyToComment(author: string) {
-  replyTarget.value = author;
+function replyToComment(comment: FeedComment) {
+  replyTarget.value = comment;
+}
+
+function handleCommentLike(comment: FeedComment) {
+  toggleCommentLike(postId.value, comment.id);
+}
+
+async function handleLoadMoreComments() {
+  if (commentLoadingMore.value || !commentHasMore.value) return;
+  commentLoadingMore.value = true;
+  try {
+    const result = await loadPostComments(postId.value, {
+      limit: commentPageSize,
+      offset: commentLoaded.value,
+      append: true,
+    });
+    commentLoaded.value += result.items.length;
+    commentTotal.value = result.total;
+  } finally {
+    commentLoadingMore.value = false;
+  }
+}
+
+async function handleExpandReplies(comment: FeedComment) {
+  const currentChildren = (comment.children || []).length;
+  await loadCommentReplies(postId.value, comment.id, { limit: 10, offset: currentChildren });
 }
 
 function clearReply() {
@@ -183,7 +222,7 @@ function clearReply() {
   }
 
   if (!commentDraft.value.trim()) {
-    replyTarget.value = "";
+    replyTarget.value = null;
     return;
   }
 
@@ -195,7 +234,7 @@ function clearReply() {
     success: ({ confirm }) => {
       if (confirm) {
         commentDraft.value = "";
-        replyTarget.value = "";
+        replyTarget.value = null;
         showEmoji.value = false;
         uni.showToast({
           title: "已清空",

@@ -8,7 +8,7 @@
             <text class="author-name">{{ post.author }}</text>
             <text class="author-tag">{{ post.authorTag }}</text>
           </view>
-          <text class="post-meta">{{ post.time }} · {{ post.location }}</text>
+          <text class="post-meta">{{ post.location ? `${post.time} · ${post.location}` : post.time }}</text>
         </view>
       </view>
 

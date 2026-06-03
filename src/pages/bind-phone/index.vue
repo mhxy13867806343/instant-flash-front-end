@@ -64,6 +64,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
 import { useAuth } from "@/hooks/use-auth";
+import { bindMyPhone } from "@/api/user";
 import { isValidMobilePhone, maskMobilePhone, sanitizeMobilePhone } from "@/utils/phone";
 
 const form = reactive({
@@ -71,7 +72,7 @@ const form = reactive({
   code: "",
 });
 
-const { profile } = useAuth();
+const { profile, refreshProfile } = useAuth();
 const currentPhoneMask = computed(() => maskMobilePhone(profile.value.phone) || "暂未绑定手机号");
 const codeRef = ref<{ start: () => void; reset: () => void } | null>(null);
 const codeTips = ref("获取验证码");
@@ -158,7 +159,7 @@ function handleCodeEnd() {
   codeTips.value = "重新获取";
 }
 
-function bindPhone() {
+async function bindPhone() {
   if (!validatePhone()) return;
   if (form.phone !== lastSentPhone.value) {
     uni.showToast({
@@ -181,10 +182,24 @@ function bindPhone() {
     });
     return;
   }
-  uni.showToast({
-    title: "新手机号已绑定",
-    icon: "none",
-  });
+
+  try {
+    await bindMyPhone({ phone: form.phone, code: form.code });
+    // 绑定成功后刷新 profile 同步最新手机号
+    await refreshProfile();
+    uni.showToast({
+      title: "新手机号已绑定",
+      icon: "none",
+    });
+    setTimeout(() => {
+      uni.navigateBack();
+    }, 1200);
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "绑定失败，请重试",
+      icon: "none",
+    });
+  }
 }
 
 watch(

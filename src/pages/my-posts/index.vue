@@ -5,7 +5,7 @@
       v-model="pagingPosts"
       class="my-posts-page__paging"
       :fixed="false"
-      :default-page-size="1"
+      :default-page-size="10"
       @query="queryList"
     >
       <view v-if="myPosts.length" class="my-posts-list">

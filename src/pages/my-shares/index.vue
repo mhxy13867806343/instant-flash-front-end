@@ -5,7 +5,7 @@
       v-model="pagingPosts"
       class="my-shares-page__paging"
       :fixed="false"
-      :default-page-size="2"
+      :default-page-size="10"
       @query="queryList"
     >
       <view v-if="sharePosts.length" class="my-shares-list">

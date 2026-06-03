@@ -29,15 +29,22 @@
 </template>
 
 <script setup lang="ts">
+import { useAuth } from "@/hooks/use-auth";
+
 defineProps<{
   current: "home" | "profile";
 }>();
+
+const { ensureLogin } = useAuth();
 
 function switchTo(url: string) {
   uni.reLaunch({ url });
 }
 
 function openPublish() {
+  if (!ensureLogin("/pages/publish/index", { content: "登录后才可以发布动态，是否现在去登录？" })) {
+    return;
+  }
   uni.navigateTo({
     url: "/pages/publish/index",
   });

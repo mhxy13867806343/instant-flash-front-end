@@ -1,5 +1,5 @@
 import type { FeedComment, FeedPost } from "@/mock/post-data";
-import type { ApiComment, ApiPost } from "@/types/api";
+import type { ApiComment, ApiCommentListResponse, ApiPost } from "@/types/api";
 
 function formatRelativeTime(value: string) {
   const date = new Date(value);
@@ -45,25 +45,99 @@ function formatUserName(userId?: string | null) {
   return `用户${userId.slice(-4)}`;
 }
 
+function resolveCommentAuthor(comment: ApiComment) {
+  return comment.nickname || formatUserName(comment.userId);
+}
+
+function resolveReplyToName(comment: ApiComment) {
+  if (comment.replyToNickname) {
+    return comment.replyToNickname;
+  }
+  if (comment.replyToUserId) {
+    return formatUserName(comment.replyToUserId);
+  }
+  return undefined;
+}
+
 export function mapApiCommentToFeedComment(comment: ApiComment): FeedComment {
+  const childSource = comment.children || comment.replies || [];
+
+  // 把后端可能存在的多级嵌套回复拍平成两级：
+  // 顶层评论下的所有后代回复都收敛到同一个 children 数组里，
+  // 每条回复保留各自的 "回复 @某人" 信息。
+  const flatChildren: Array<FeedComment & { _ts: number }> = [];
+  function collect(list: ApiComment[]) {
+    list.forEach((child) => {
+      const grandChildren = child.children || child.replies || [];
+      flatChildren.push({
+        id: child.commentId,
+        userId: child.userId,
+        author: resolveCommentAuthor(child),
+        avatar: child.avatar || undefined,
+        time: formatRelativeTime(child.createdAt),
+        content: child.content,
+        replyTo: resolveReplyToName(child),
+        parentId: child.parentId || undefined,
+        likeCount: child.likeCount ?? 0,
+        liked: Boolean(child.isLiked),
+        _ts: new Date(child.createdAt).getTime() || 0,
+      });
+      if (grandChildren.length) {
+        collect(grandChildren);
+      }
+    });
+  }
+  collect(childSource);
+
+  // 子回复按时间从早到晚排序，符合楼中楼的阅读顺序
+  flatChildren.sort((a, b) => a._ts - b._ts);
+  const children: FeedComment[] = flatChildren.map(({ _ts, ...rest }) => rest);
+
   return {
     id: comment.commentId,
-    author: formatUserName(comment.userId),
+    userId: comment.userId,
+    author: resolveCommentAuthor(comment),
+    avatar: comment.avatar || undefined,
     time: formatRelativeTime(comment.createdAt),
     content: comment.content,
-    replyTo: comment.replyToUserId ? formatUserName(comment.replyToUserId) : undefined,
+    replyTo: resolveReplyToName(comment),
+    parentId: comment.parentId || undefined,
+    replyCount: comment.replyCount ?? children.length,
+    likeCount: comment.likeCount ?? 0,
+    liked: Boolean(comment.isLiked),
+    children,
   };
 }
 
+export function normalizeCommentResponse(
+  response: ApiCommentListResponse | ApiComment[]
+): { items: FeedComment[]; total: number; commentTotal: number; hasMore: boolean } {
+  if (Array.isArray(response)) {
+    const items = response.map(mapApiCommentToFeedComment);
+    return { items, total: items.length, commentTotal: items.length, hasMore: false };
+  }
+
+  const rawItems = Array.isArray(response.items) ? response.items : [];
+  const items = rawItems.map(mapApiCommentToFeedComment);
+  const total = typeof response.total === "number" ? response.total : rawItems.length;
+  const commentTotal = typeof response.commentTotal === "number" ? response.commentTotal : total;
+  const hasMore = typeof response.hasMore === "boolean" ? response.hasMore : false;
+
+  return { items, total, commentTotal, hasMore };
+}
+
 export function mapApiPostToFeedPost(post: ApiPost, commentList: FeedComment[] = []): FeedPost {
+  const locationParts = [post.city, post.district, post.location].filter(Boolean);
+  const locationText = locationParts.length ? locationParts.join("·") : "";
   return {
     id: post.postId,
+    authorId: post.userId,
     author: post.nickname || "即闪用户",
     authorTag: "",
     time: formatRelativeTime(post.createdAt),
-    location: "",
+    location: locationText,
     content: post.content,
-    topics: [],
+    topics: Array.isArray(post.topics) ? post.topics : [],
     media: Array.isArray(post.images) ? post.images.map(mapMediaItem).filter(Boolean) : [],
     likes: post.likeCount,
     comments: post.commentCount,

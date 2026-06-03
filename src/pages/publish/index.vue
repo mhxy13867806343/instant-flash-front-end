@@ -19,15 +19,19 @@
             <text class="publish-card__count">{{ content.length }}/150</text>
           </view>
         </view>
-        <textarea
-          v-model="content"
-          class="publish-textarea"
-          maxlength="150"
-          auto-height
-          placeholder="分享这一刻在发生什么，长文内容也可以慢慢写..."
-          placeholder-class="publish-placeholder"
-          @input="handleContentInput"
-        />
+        <view class="publish-textarea-wrap">
+          <textarea
+            v-model="content"
+            class="publish-textarea"
+            maxlength="150"
+            auto-height
+            :disabled="!isLoggedIn"
+            placeholder="分享这一刻在发生什么，长文内容也可以慢慢写..."
+            placeholder-class="publish-placeholder"
+            @input="handleContentInput"
+          />
+          <button v-if="!isLoggedIn" class="publish-textarea-mask" @tap="handleTextareaMaskTap" />
+        </view>
         <view v-if="showInlineTopicPanel" class="inline-topic-panel">
           <view class="inline-topic-panel__head">
             <text class="inline-topic-panel__title">话题联想</text>
@@ -207,6 +211,7 @@ import { computed, ref } from "vue";
 import { onUnload } from "@dcloudio/uni-app";
 import MediaPreviewPopup, { type MediaPreviewAsset } from "@/components/media-preview-popup.vue";
 import { recommendedTopicOptions, searchTopicOptions } from "@/api/topic";
+import { useAuth } from "@/hooks/use-auth";
 
 type MediaItem = {
   id: number;
@@ -246,6 +251,7 @@ type MediaTask = {
 };
 
 const content = ref("");
+const { isLoggedIn, ensureLogin } = useAuth();
 const topics = recommendedTopicOptions;
 const selectedTopics = ref<string[]>(["同城发现"]);
 const mediaItems = ref<MediaItem[]>([]);
@@ -299,6 +305,10 @@ let nextTaskId = 1;
 const taskProgressTimers = new Map<number, ReturnType<typeof setInterval>>();
 const taskHideTimers = new Map<number, ReturnType<typeof setTimeout>>();
 const canceledTaskIds = new Set<number>();
+
+function ensurePublishLogin(content = "登录后才可以继续发布动态，是否现在去登录？") {
+  return ensureLogin("/pages/publish/index", { content });
+}
 
 function formatFileSize(size: number) {
   if (!size) {
@@ -808,6 +818,10 @@ async function prepareMediaItem(file: PickedMediaFile, id: number): Promise<Medi
 }
 
 function toggleTopic(topic: string) {
+  if (!ensurePublishLogin("登录后才可以选择发布话题，是否现在去登录？")) {
+    return;
+  }
+
   if (selectedTopics.value.includes(topic)) {
     if (selectedTopics.value.length === 1) {
       uni.showToast({
@@ -876,6 +890,10 @@ function handleContentInput(event: { detail?: { value?: string; cursor?: number 
   updateInlineTopicSuggestions(value, cursor);
 }
 
+function handleTextareaMaskTap() {
+  ensurePublishLogin("登录后才可以输入动态正文，是否现在去登录？");
+}
+
 function applyInlineTopic(topic: string) {
   const range = inlineTopicRange.value;
   if (!range) {
@@ -900,6 +918,10 @@ function applyInlineTopic(topic: string) {
 }
 
 function clearContent() {
+  if (!ensurePublishLogin("登录后才可以编辑动态正文，是否现在去登录？")) {
+    return;
+  }
+
   if (!content.value) {
     return;
   }
@@ -993,6 +1015,10 @@ function confirmClearMediaTasks() {
 }
 
 function openTopicSearchPage() {
+  if (!ensurePublishLogin("登录后才可以搜索和选择话题，是否现在去登录？")) {
+    return;
+  }
+
   uni.navigateTo({
     url: `/pages/topic-search/index?select=1&selected=${encodeURIComponent(selectedTopics.value.join(","))}`,
     success: (res) => {
@@ -1084,6 +1110,10 @@ function openAppMixedMediaPicker() {
 }
 
 async function openMixedMediaPicker() {
+  if (!ensurePublishLogin("登录后才可以添加图片或视频，是否现在去登录？")) {
+    return;
+  }
+
   if (isH5()) {
     const files = await openH5FilePicker({
       accept: "image/*,video/*",
@@ -1220,6 +1250,10 @@ function closePreview() {
 }
 
 function handleReplaceFromPreview() {
+  if (!ensurePublishLogin("登录后才可以替换当前媒体，是否现在去登录？")) {
+    return;
+  }
+
   if (!previewItem.value) {
     return;
   }
@@ -1230,6 +1264,10 @@ function handleReplaceFromPreview() {
 }
 
 function confirmRemoveMedia(item: MediaItem) {
+  if (!ensurePublishLogin("登录后才可以删除当前媒体，是否现在去登录？")) {
+    return;
+  }
+
   uni.showModal({
     title: item.type === "video" ? "删除视频" : "删除图片",
     content: item.type === "video" ? "确认删除当前视频吗？" : "确认删除当前图片吗？",
@@ -1259,6 +1297,10 @@ onUnload(() => {
 });
 
 function saveDraft() {
+  if (!ensurePublishLogin("登录后才可以保存发布草稿，是否现在去登录？")) {
+    return;
+  }
+
   if (pendingMediaTasks.value.length) {
     uni.showToast({
       title: "资源仍在处理中，请稍后再操作",
@@ -1274,6 +1316,10 @@ function saveDraft() {
 }
 
 function selectLocation() {
+  if (!ensurePublishLogin("登录后才可以设置发布位置，是否现在去登录？")) {
+    return;
+  }
+
   uni.showActionSheet({
     itemList: locationOptions,
     success: ({ tapIndex }) => {
@@ -1287,6 +1333,10 @@ function selectLocation() {
 }
 
 function selectVisibility() {
+  if (!ensurePublishLogin("登录后才可以设置可见范围，是否现在去登录？")) {
+    return;
+  }
+
   uni.showActionSheet({
     itemList: visibilityOptions,
     success: ({ tapIndex }) => {
@@ -1300,6 +1350,10 @@ function selectVisibility() {
 }
 
 function submit() {
+  if (!ensurePublishLogin("登录后才可以发布动态，是否现在去登录？")) {
+    return;
+  }
+
   if (pendingMediaTasks.value.length) {
     uni.showToast({
       title: "资源仍在上传处理中，请等待完成后再发布",
@@ -1410,6 +1464,10 @@ function submit() {
   color: var(--text-tertiary);
 }
 
+.publish-textarea-wrap {
+  position: relative;
+}
+
 .publish-textarea {
   width: 100%;
   min-height: 280rpx;
@@ -1422,6 +1480,13 @@ function submit() {
 
 .publish-placeholder {
   color: #9b948e;
+}
+
+.publish-textarea-mask {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: transparent;
 }
 
 .inline-topic-panel {

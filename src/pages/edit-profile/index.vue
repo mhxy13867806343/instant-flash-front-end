@@ -5,7 +5,8 @@
       <text class="section-desc">头像、昵称、性别和简介都可以在这里统一维护。</text>
 
       <button class="avatar-field" @tap="changeAvatar">
-        <view class="avatar-field__avatar">{{ profile.avatarText }}</view>
+        <image v-if="profile.avatar" class="avatar-field__img" :src="profile.avatar" mode="aspectFill" />
+        <view v-else class="avatar-field__avatar">{{ profile.avatarText }}</view>
         <view class="avatar-field__info">
           <text class="avatar-field__title">修改头像</text>
           <text class="avatar-field__desc">支持拍照上传或从相册选择</text>
@@ -50,11 +51,13 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from "vue";
+import { reactive, watch } from "vue";
+import { onShow } from "@dcloudio/uni-app";
 import { useAuth } from "@/hooks/use-auth";
+import { uploadAvatar } from "@/api/user";
 
 const genderOptions = ["保密", "男", "女"] as const;
-const { profile, updateProfile } = useAuth();
+const { profile, updateProfile, refreshProfile } = useAuth();
 const inputStyle = {
   minHeight: "88rpx",
   padding: "0 24rpx",
@@ -68,13 +71,48 @@ const form = reactive({
   bio: profile.value.bio,
 });
 
+// 进入页面时拉取最新 profile
+onShow(() => {
+  refreshProfile().catch(() => {});
+});
+
+// profile 刷新后同步到表单
+watch(
+  () => profile.value,
+  (val) => {
+    form.name = val.nickname;
+    form.gender = val.gender;
+    form.bio = val.bio;
+  }
+);
+
 function changeAvatar() {
   uni.showActionSheet({
     itemList: ["拍照上传", "从相册选择"],
-    success: () => {
-      uni.showToast({
-        title: "已打开头像修改入口",
-        icon: "none",
+    success: ({ tapIndex }) => {
+      const sourceType = tapIndex === 0 ? ["camera"] : ["album"];
+      uni.chooseImage({
+        count: 1,
+        sourceType: sourceType as ("camera" | "album")[],
+        sizeType: ["compressed"],
+        extension: [".jpg", ".jpeg", ".png", ".webp", ".gif"],
+        success: async (res) => {
+          const filePath = res.tempFilePaths[0];
+          if (!filePath) return;
+          uni.showLoading({ title: "上传中..." });
+          try {
+            await uploadAvatar(filePath);
+            uni.hideLoading();
+            await refreshProfile();
+            uni.showToast({ title: "头像已更新", icon: "none" });
+          } catch (error) {
+            uni.hideLoading();
+            uni.showToast({
+              title: error instanceof Error ? error.message : "上传失败",
+              icon: "none",
+            });
+          }
+        },
       });
     },
   });
@@ -151,6 +189,13 @@ async function saveProfile() {
   color: #fff;
   font-size: 38rpx;
   font-weight: 700;
+}
+
+.avatar-field__img {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .avatar-field__info {

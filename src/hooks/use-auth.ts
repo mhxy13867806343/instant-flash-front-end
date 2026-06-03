@@ -1,8 +1,8 @@
 import { computed, ref } from "vue";
 import { fetchDevToken, loginWithWeChat as wxLogin } from "@/api/auth";
 import { fetchMyProfile, updateMyProfile } from "@/api/user";
-import { AUTH_REDIRECT_STORAGE_KEY, AUTH_STATE_STORAGE_KEY, AUTH_TOKEN_STORAGE_KEY } from "@/constants/storage";
-import type { ApiUserProfile } from "@/types/api";
+import { API_BASE_URL } from "@/config/env";
+import { AUTH_REDIRECT_STORAGE_KEY, AUTH_TOKEN_STORAGE_KEY } from "@/constants/storage";
 import { isValidMobilePhone, maskMobilePhone } from "@/utils/phone";
 
 export type AuthProfile = {
@@ -22,6 +22,27 @@ type StoredAuthState = {
   loggedIn: boolean;
   token: string;
   profile: AuthProfile;
+};
+
+type AuthProfileSource = {
+  userId?: string | null;
+  nickname?: string | null;
+  phone?: string | null;
+  avatar?: string | null;
+  avatarText?: string | null;
+  gender?: string | null;
+  bio?: string | null;
+  signature?: string | null;
+  province?: string | null;
+  city?: string | null;
+  district?: string | null;
+};
+
+type LoginPromptOptions = {
+  title?: string;
+  content?: string;
+  confirmText?: string;
+  cancelText?: string;
 };
 
 const defaultProfile: AuthProfile = {
@@ -64,16 +85,28 @@ function getAvatarText(nickname: string) {
   return nickname.trim().slice(0, 1) || defaultProfile.avatarText;
 }
 
-function buildAuthProfile(source?: Partial<AuthProfile> | ApiUserProfile | null, fallback?: Partial<AuthProfile>): AuthProfile {
+function normalizeAvatarUrl(url?: string | null): string {
+  if (!url) return "";
+  // 已经是完整 URL
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  // 相对路径，拼接域名
+  const base = API_BASE_URL.replace(/\/$/, "");
+  const path = url.startsWith("/") ? url : `/${url}`;
+  return `${base}${path}`;
+}
+
+function buildAuthProfile(source?: AuthProfileSource | null, fallback?: Partial<AuthProfile>): AuthProfile {
   const nickname = String(source?.nickname || fallback?.nickname || defaultProfile.nickname).trim() || defaultProfile.nickname;
   const phone = String(source?.phone || fallback?.phone || "");
-  const bio = String(source?.bio || fallback?.bio || defaultProfile.bio);
+  const bio = String(source?.bio || source?.signature || fallback?.bio || "");
 
   return {
     userId: String(source?.userId || fallback?.userId || ""),
     nickname,
     phone,
-    avatar: String(source?.avatar || fallback?.avatar || ""),
+    avatar: normalizeAvatarUrl(source?.avatar || fallback?.avatar),
     avatarText: getAvatarText(nickname),
     gender: normalizeGender(source?.gender || fallback?.gender),
     bio,
@@ -85,21 +118,11 @@ function buildAuthProfile(source?: Partial<AuthProfile> | ApiUserProfile | null,
 
 function readStoredState(): StoredAuthState {
   try {
-    const raw = uni.getStorageSync(AUTH_STATE_STORAGE_KEY);
     const token = String(uni.getStorageSync(AUTH_TOKEN_STORAGE_KEY) || "");
-    if (!raw) {
-      return {
-        loggedIn: Boolean(token),
-        token,
-        profile: Boolean(token) ? defaultProfile : guestProfile,
-      };
-    }
-
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
     return {
-      loggedIn: Boolean(parsed?.loggedIn && token),
+      loggedIn: Boolean(token),
       token,
-      profile: buildAuthProfile(parsed?.profile, parsed?.profile),
+      profile: Boolean(token) ? defaultProfile : guestProfile,
     };
   } catch {
     return {
@@ -116,13 +139,6 @@ const profile = ref<AuthProfile>(initialState.loggedIn ? initialState.profile : 
 const token = ref(initialState.token);
 
 function persistState() {
-  uni.setStorageSync(
-    AUTH_STATE_STORAGE_KEY,
-    JSON.stringify({
-      loggedIn: isLoggedIn.value,
-      profile: profile.value,
-    })
-  );
   if (token.value) {
     uni.setStorageSync(AUTH_TOKEN_STORAGE_KEY, token.value);
     return;
@@ -262,6 +278,7 @@ export function useAuth() {
     const result = await updateMyProfile({
       nickname,
       gender: payload.gender,
+      signature: payload.bio.trim() || null,
       phone: profile.value.phone || null,
       avatar: profile.value.avatar || null,
       province: profile.value.province || null,
@@ -270,7 +287,7 @@ export function useAuth() {
     });
     profile.value = buildAuthProfile(result, {
       ...localProfile,
-      bio: payload.bio.trim() || profile.value.bio || defaultProfile.bio,
+      bio: payload.bio.trim() || profile.value.bio,
     });
     persistState();
   }
@@ -287,16 +304,27 @@ export function useAuth() {
     uni.navigateTo({ url: "/pages/login/index" });
   }
 
-  function ensureLogin(redirect = "/pages/profile/index") {
+  function promptLogin(redirect = "/pages/profile/index", options: LoginPromptOptions = {}) {
+    uni.showModal({
+      title: options.title || "温馨提示",
+      content: options.content || "当前操作需要先登录，是否现在去登录？",
+      confirmText: options.confirmText || "去登录",
+      cancelText: options.cancelText || "取消",
+      success: ({ confirm }) => {
+        if (!confirm) {
+          return;
+        }
+        openLoginPage(redirect);
+      },
+    });
+  }
+
+  function ensureLogin(redirect = "/pages/profile/index", options: LoginPromptOptions = {}) {
     if (isLoggedIn.value) {
       return true;
     }
 
-    uni.showToast({
-      title: "请先登录",
-      icon: "none",
-    });
-    openLoginPage(redirect);
+    promptLogin(redirect, options);
     return false;
   }
 
@@ -328,6 +356,7 @@ export function useAuth() {
     updateProfile,
     logout,
     openLoginPage,
+    promptLogin,
     ensureLogin,
     finishLoginRedirect,
     consumePendingRedirect,

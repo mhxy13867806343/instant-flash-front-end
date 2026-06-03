@@ -1,13 +1,21 @@
 export type FeedComment = {
   id: string;
+  userId?: string;
   author: string;
+  avatar?: string;
   time: string;
   content: string;
   replyTo?: string;
+  parentId?: string;
+  replyCount?: number;
+  likeCount?: number;
+  liked?: boolean;
+  children?: FeedComment[];
 };
 
 export type FeedPost = {
   id: string;
+  authorId?: string;
   author: string;
   authorTag: string;
   time: string;

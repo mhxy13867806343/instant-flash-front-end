@@ -5,7 +5,7 @@
       v-model="pagingItems"
       class="my-comments-page__paging"
       :fixed="false"
-      :default-page-size="2"
+      :default-page-size="10"
       @query="queryList"
     >
       <view v-if="commentItems.length" class="my-comments-list">
