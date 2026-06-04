@@ -15,6 +15,7 @@
             <text v-if="field.required" class="form-field__required">*</text>
           </text>
 
+          <!-- 多行文本 -->
           <textarea
             v-if="field.type === 'textarea'"
             :value="getValue(field.fieldKey)"
@@ -24,6 +25,59 @@
             @input="onInput(field.fieldKey, $event)"
           />
 
+          <!-- 下拉选择 -->
+          <view
+            v-else-if="field.type === 'select'"
+            class="form-field__select"
+            @tap="openSelect(field)"
+          >
+            <text :class="['form-field__select-value', { 'form-field__select-value--placeholder': !getValue(field.fieldKey) }]">
+              {{ getValue(field.fieldKey) || field.placeholder || "请选择" }}
+            </text>
+            <text class="form-field__select-arrow">›</text>
+          </view>
+
+          <!-- 时间选择 -->
+          <picker
+            v-else-if="field.type === 'time'"
+            mode="time"
+            :value="getValue(field.fieldKey)"
+            @change="onPickerChange(field.fieldKey, $event)"
+          >
+            <view class="form-field__select">
+              <text :class="['form-field__select-value', { 'form-field__select-value--placeholder': !getValue(field.fieldKey) }]">
+                {{ getValue(field.fieldKey) || field.placeholder || "请选择时间" }}
+              </text>
+              <text class="form-field__select-arrow">›</text>
+            </view>
+          </picker>
+
+          <!-- 日期选择 -->
+          <picker
+            v-else-if="field.type === 'date'"
+            mode="date"
+            :value="getValue(field.fieldKey)"
+            @change="onPickerChange(field.fieldKey, $event)"
+          >
+            <view class="form-field__select">
+              <text :class="['form-field__select-value', { 'form-field__select-value--placeholder': !getValue(field.fieldKey) }]">
+                {{ getValue(field.fieldKey) || field.placeholder || "请选择日期" }}
+              </text>
+              <text class="form-field__select-arrow">›</text>
+            </view>
+          </picker>
+
+          <!-- 评分 -->
+          <view v-else-if="field.type === 'rate'" class="form-field__rate">
+            <u-rate
+              :count="5"
+              :model-value="Number(getValue(field.fieldKey)) || 0"
+              @change="onRateChange(field.fieldKey, $event)"
+            />
+            <text v-if="getValue(field.fieldKey)" class="form-field__rate-text">{{ getValue(field.fieldKey) }} 分</text>
+          </view>
+
+          <!-- 普通输入框 / 手机号 -->
           <input
             v-else
             :value="getValue(field.fieldKey)"
@@ -41,13 +95,19 @@
         </button>
       </view>
     </view>
+
+    <u-action-sheet
+      v-model="selectSheetVisible"
+      :list="selectSheetList"
+      @click="onSelectPick"
+    />
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { fetchFeedbackForm, submitFeedback, type FeedbackForm } from "@/api/feedback";
+import { fetchFeedbackForm, submitFeedback, type FeedbackField, type FeedbackForm } from "@/api/feedback";
 import { isValidMobilePhone } from "@/utils/phone";
 
 const form = ref<FeedbackForm | null>(null);
@@ -55,11 +115,21 @@ const loading = ref(true);
 const submitting = ref(false);
 const formData = reactive<Record<string, string>>({});
 
+const selectSheetVisible = ref(false);
+const activeSelectField = ref<FeedbackField | null>(null);
+
 const fields = computed(() => {
   const list = form.value?.fields || [];
   return [...list]
     .filter((item) => item.status !== "disabled")
     .sort((a, b) => (a.sort || 0) - (b.sort || 0));
+});
+
+const selectSheetList = computed(() => {
+  const options = activeSelectField.value?.options || [];
+  return options.map((opt) => ({
+    text: typeof opt === "string" ? opt : opt.label || opt.value || "",
+  }));
 });
 
 onLoad(() => {
@@ -71,7 +141,6 @@ async function loadForm() {
   try {
     const result = await fetchFeedbackForm();
     form.value = result;
-    // 初始化字段值
     (result.fields || []).forEach((field) => {
       if (!(field.fieldKey in formData)) {
         formData[field.fieldKey] = "";
@@ -95,12 +164,35 @@ function onInput(key: string, event: { detail?: { value?: string } }) {
   formData[key] = event.detail?.value || "";
 }
 
+function onPickerChange(key: string, event: { detail?: { value?: string } }) {
+  formData[key] = event.detail?.value || "";
+}
+
+function onRateChange(key: string, value: number) {
+  formData[key] = String(value);
+}
+
+function openSelect(field: FeedbackField) {
+  activeSelectField.value = field;
+  selectSheetVisible.value = true;
+}
+
+function onSelectPick(index: number) {
+  const field = activeSelectField.value;
+  if (!field) return;
+  const options = field.options || [];
+  const opt = options[index];
+  const value = typeof opt === "string" ? opt : opt?.value || opt?.label || "";
+  formData[field.fieldKey] = value;
+  selectSheetVisible.value = false;
+}
+
 async function handleSubmit() {
-  // 校验必填
   for (const field of fields.value) {
     const value = (formData[field.fieldKey] || "").trim();
     if (field.required && !value) {
-      uni.showToast({ title: `请填写${field.label}`, icon: "none" });
+      const verb = ["select", "time", "date", "rate"].includes(field.type) ? "请选择" : "请填写";
+      uni.showToast({ title: `${verb}${field.label}`, icon: "none" });
       return;
     }
     if (field.type === "phone" && value && !isValidMobilePhone(value)) {
@@ -111,7 +203,6 @@ async function handleSubmit() {
 
   submitting.value = true;
   try {
-    // phone/title/content 直接传，其余放 data
     const knownKeys = ["phone", "title", "content"];
     const data: Record<string, unknown> = {};
     Object.keys(formData).forEach((key) => {
@@ -132,7 +223,6 @@ async function handleSubmit() {
       icon: "none",
     });
 
-    // 清空表单
     Object.keys(formData).forEach((key) => {
       formData[key] = "";
     });
@@ -219,6 +309,44 @@ async function handleSubmit() {
 
 .form-field__placeholder {
   color: #b7aea7;
+}
+
+.form-field__select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 88rpx;
+  padding: 0 24rpx;
+  border-radius: 20rpx;
+  background: #fff7f3;
+}
+
+.form-field__select-value {
+  font-size: 26rpx;
+  color: var(--text-primary);
+}
+
+.form-field__select-value--placeholder {
+  color: #b7aea7;
+}
+
+.form-field__select-arrow {
+  font-size: 36rpx;
+  color: var(--text-tertiary);
+}
+
+.form-field__rate {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  height: 72rpx;
+  padding: 0 8rpx;
+}
+
+.form-field__rate-text {
+  font-size: 24rpx;
+  color: var(--brand-primary);
+  font-weight: 600;
 }
 
 .feedback-submit {
