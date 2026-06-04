@@ -33,7 +33,8 @@
           class="media-cell"
           @tap.stop="openMediaPreview(index)"
         >
-          <text class="media-label">{{ item }}</text>
+          <image v-if="isUrl(item)" class="media-image" :src="item" mode="aspectFill" />
+          <text v-else class="media-label">{{ item }}</text>
         </view>
       </view>
     </view>
@@ -104,6 +105,7 @@ const previewAssets = computed<MediaPreviewAsset[]>(() =>
   props.post.media.map((item) => ({
     type: "image",
     label: item,
+    src: isUrl(item) ? item : undefined,
     description: `${props.post.location} · ${props.post.time}`,
   }))
 );
@@ -116,6 +118,10 @@ function handleDetail() {
   if (props.mode !== "detail") {
     emit("detail", props.post.id);
   }
+}
+
+function isUrl(value: string) {
+  return /^(https?:|blob:|data:|\/)/i.test(value);
 }
 
 function openMediaPreview(index: number) {
@@ -246,14 +252,24 @@ function closePreview() {
 }
 
 .media-cell {
+  position: relative;
   display: flex;
   align-items: flex-end;
   min-height: 184rpx;
   padding: 20rpx;
   border-radius: 24rpx;
+  overflow: hidden;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(34, 26, 21, 0.16)),
     linear-gradient(135deg, #ffcfbf, #ffdca8 45%, #fff4ec);
+}
+
+.media-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 24rpx;
 }
 
 .media-label {

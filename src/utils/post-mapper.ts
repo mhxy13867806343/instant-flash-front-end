@@ -1,5 +1,16 @@
 import type { FeedComment, FeedPost } from "@/mock/post-data";
 import type { ApiComment, ApiCommentListResponse, ApiPost } from "@/types/api";
+import { API_BASE_URL } from "@/config/env";
+
+function normalizeAssetUrl(url: string): string {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
+  }
+  const base = (API_BASE_URL || "").replace(/\/$/, "");
+  const path = url.startsWith("/") ? url : `/${url}`;
+  return `${base}${path}`;
+}
 
 function formatRelativeTime(value: string) {
   const date = new Date(value);
@@ -23,19 +34,19 @@ function formatRelativeTime(value: string) {
 
 function mapMediaItem(item: unknown) {
   if (typeof item === "string") {
-    return item;
+    return normalizeAssetUrl(item);
   }
 
   if (typeof item === "object" && item !== null) {
     if ("url" in item && typeof item.url === "string") {
-      return item.url;
+      return normalizeAssetUrl(item.url);
     }
     if ("src" in item && typeof item.src === "string") {
-      return item.src;
+      return normalizeAssetUrl(item.src);
     }
   }
 
-  return String(item ?? "");
+  return "";
 }
 
 function formatUserName(userId?: string | null) {
