@@ -97,8 +97,8 @@ function goDetail(id: string) {
 }
 
 .my-comments-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18rpx;
 }
 
@@ -106,23 +106,27 @@ function goDetail(id: string) {
   display: flex;
   flex-direction: column;
   gap: 14rpx;
-  padding: 28rpx 24rpx;
+  padding: 24rpx 22rpx;
   text-align: left;
+  min-height: 200rpx;
 }
 
 .comment-row__head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6rpx;
 }
 
 .comment-row__title {
   min-width: 0;
-  flex: 1;
+  width: 100%;
   font-size: 26rpx;
   font-weight: 700;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .comment-row__time {
@@ -132,7 +136,11 @@ function goDetail(id: string) {
 
 .comment-row__content {
   font-size: 24rpx;
-  line-height: 1.7;
+  line-height: 1.6;
   color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>

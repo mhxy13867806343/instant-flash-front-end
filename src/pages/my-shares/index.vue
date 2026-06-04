@@ -71,8 +71,8 @@ function goDetail(id: string) {
 }
 
 .my-shares-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18rpx;
 }
 
@@ -80,15 +80,16 @@ function goDetail(id: string) {
   display: flex;
   flex-direction: column;
   gap: 14rpx;
-  padding: 28rpx 24rpx;
+  padding: 24rpx 22rpx;
   text-align: left;
+  min-height: 200rpx;
 }
 
 .share-row__head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6rpx;
 }
 
 .share-row__author {
@@ -104,7 +105,11 @@ function goDetail(id: string) {
 
 .share-row__content {
   font-size: 24rpx;
-  line-height: 1.7;
+  line-height: 1.6;
   color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>
