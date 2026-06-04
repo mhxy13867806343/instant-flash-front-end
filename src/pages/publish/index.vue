@@ -203,6 +203,17 @@
         <button v-if="previewItem" class="preview-replace-btn" @tap="handleReplaceFromPreview">重新选择</button>
       </template>
     </media-preview-popup>
+
+    <u-action-sheet
+      v-model="locationSheetVisible"
+      :list="locationActionList"
+      @click="onLocationPick"
+    />
+    <u-action-sheet
+      v-model="visibilitySheetVisible"
+      :list="visibilityActionList"
+      @click="onVisibilityPick"
+    />
   </view>
 </template>
 
@@ -267,6 +278,10 @@ const locationOptions = ref<string[]>([]);
 const visibilityOptions = ["公开", "仅好友可见", "仅自己可见"];
 const location = ref("");
 const visibility = ref(visibilityOptions[0]);
+const locationSheetVisible = ref(false);
+const visibilitySheetVisible = ref(false);
+const locationActionList = computed(() => locationOptions.value.map((item) => ({ text: item })));
+const visibilityActionList = computed(() => visibilityOptions.map((item) => ({ text: item })));
 const showInlineTopicPanel = computed(() => inlineTopicRange.value !== null);
 
 // 进入页面时拉取推荐话题 + 附近位置
@@ -1324,28 +1339,12 @@ function confirmRemoveMedia(item: MediaItem) {
 }
 
 function dismissTransientUi() {
-  // 关闭可能未关闭的 toast/loading
+  // 关闭 toast/loading
   uni.hideToast();
   uni.hideLoading();
-  // H5 端尝试关闭 actionSheet（uni-app 私有 API）
-  // @ts-ignore
-  if (typeof uni.hideActionSheet === "function") {
-    // @ts-ignore
-    uni.hideActionSheet();
-  }
-
-  // #ifdef H5
-  // H5 兜底：把残留的 actionSheet/toast 弹层隐藏（不删除节点，下次还能正常打开）
-  if (typeof document !== "undefined") {
-    const selectors = [".uni-actionsheet", ".uni-mask", ".uni-toast", ".uni-modal"];
-    selectors.forEach((sel) => {
-      document.querySelectorAll<HTMLElement>(sel).forEach((node) => {
-        node.style.display = "none";
-      });
-    });
-  }
-  // #endif
-
+  // 关闭组件化弹窗（u-action-sheet 通过 v-model 控制）
+  locationSheetVisible.value = false;
+  visibilitySheetVisible.value = false;
   // 关闭媒体预览
   previewVisible.value = false;
   // 关闭话题内联面板
@@ -1395,15 +1394,15 @@ function selectLocation() {
     return;
   }
 
-  uni.showActionSheet({
-    itemList: locationOptions.value,
-    success: ({ tapIndex }) => {
-      location.value = locationOptions.value[tapIndex] || location.value;
-      uni.showToast({
-        title: `已切换到${location.value}`,
-        icon: "none",
-      });
-    },
+  locationSheetVisible.value = true;
+}
+
+function onLocationPick(index: number) {
+  location.value = locationOptions.value[index] || location.value;
+  locationSheetVisible.value = false;
+  uni.showToast({
+    title: `已切换到${location.value}`,
+    icon: "none",
   });
 }
 
@@ -1411,16 +1410,15 @@ function selectVisibility() {
   if (!ensurePublishLogin("登录后才可以设置可见范围，是否现在去登录？")) {
     return;
   }
+  visibilitySheetVisible.value = true;
+}
 
-  uni.showActionSheet({
-    itemList: visibilityOptions,
-    success: ({ tapIndex }) => {
-      visibility.value = visibilityOptions[tapIndex] || visibility.value;
-      uni.showToast({
-        title: `已设置为${visibility.value}`,
-        icon: "none",
-      });
-    },
+function onVisibilityPick(index: number) {
+  visibility.value = visibilityOptions[index] || visibility.value;
+  visibilitySheetVisible.value = false;
+  uni.showToast({
+    title: `已设置为${visibility.value}`,
+    icon: "none",
   });
 }
 
