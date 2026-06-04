@@ -33,7 +33,20 @@
           class="media-cell"
           @tap.stop="openMediaPreview(index)"
         >
-          <image v-if="isUrl(item)" class="media-image" :src="item" mode="aspectFill" />
+          <video
+            v-if="isVideo(item)"
+            class="media-image"
+            :src="item"
+            object-fit="cover"
+            :show-center-play-btn="true"
+            :controls="false"
+          />
+          <image
+            v-else-if="isUrl(item)"
+            class="media-image"
+            :src="item"
+            mode="aspectFill"
+          />
           <text v-else class="media-label">{{ item }}</text>
         </view>
       </view>
@@ -103,7 +116,7 @@ const mediaColumns = computed(() => {
 });
 const previewAssets = computed<MediaPreviewAsset[]>(() =>
   props.post.media.map((item) => ({
-    type: "image",
+    type: isVideo(item) ? "video" : "image",
     label: item,
     src: isUrl(item) ? item : undefined,
     description: `${props.post.location} · ${props.post.time}`,
@@ -122,6 +135,10 @@ function handleDetail() {
 
 function isUrl(value: string) {
   return /^(https?:|blob:|data:|\/)/i.test(value);
+}
+
+function isVideo(value: string) {
+  return /\.(mp4|mov|m4v|webm|avi)(\?|#|$)/i.test(value);
 }
 
 function openMediaPreview(index: number) {

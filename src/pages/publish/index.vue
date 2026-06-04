@@ -1458,7 +1458,7 @@ async function saveDraft() {
     return url;
   };
 
-  const imageItems = mediaItems.value.filter((item) => item.type === "image" && item.uploadedUrl);
+  const imageItems = mediaItems.value.filter((item) => item.uploadedUrl);
 
   uni.showLoading({ title: "保存草稿中...", mask: true });
   try {
@@ -1557,7 +1557,7 @@ async function submit() {
     return url;
   };
 
-  const imageItems = mediaItems.value.filter((item) => item.type === "image" && item.uploadedUrl);
+  const imageItems = mediaItems.value.filter((item) => item.uploadedUrl);
 
   uni.showLoading({ title: "发布中...", mask: true });
 
