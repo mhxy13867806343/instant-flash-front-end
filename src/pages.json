@@ -75,6 +75,18 @@
       }
     },
     {
+      "path": "pages/about-project/index",
+      "style": {
+        "navigationBarTitleText": "项目介绍"
+      }
+    },
+    {
+      "path": "pages/about-author/index",
+      "style": {
+        "navigationBarTitleText": "关于作者"
+      }
+    },
+    {
       "path": "pages/my-posts/index",
       "style": {
         "navigationBarTitleText": "我的发布"

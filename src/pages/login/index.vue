@@ -83,7 +83,11 @@
         </view>
 
         <view class="login-feedback">
-          <button class="login-feedback__btn" @tap="goFeedback">遇到问题？意见反馈</button>
+          <button class="login-feedback__btn" @tap="goFeedback">意见反馈</button>
+          <text class="login-feedback__dot">·</text>
+          <button class="login-feedback__btn" @tap="goPage('/pages/about-project/index')">项目介绍</button>
+          <text class="login-feedback__dot">·</text>
+          <button class="login-feedback__btn" @tap="goPage('/pages/about-author/index')">关于作者</button>
         </view>
       </view>
     </view>
@@ -166,6 +170,10 @@ function goAgreement(url: string) {
 
 function goFeedback() {
   uni.navigateTo({ url: "/pages/feedback/index" });
+}
+
+function goPage(url: string) {
+  uni.navigateTo({ url });
 }
 
 function sanitizePhoneInput(value: string) {
@@ -487,7 +495,9 @@ async function finishLogin() {
 
 .login-feedback {
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 12rpx;
   padding-top: 4rpx;
 }
 
@@ -496,10 +506,16 @@ async function finishLogin() {
   font-size: 22rpx;
   color: var(--brand-primary);
   line-height: 1.6;
+  padding: 0;
 }
 
 .login-feedback__btn::after {
   border: none;
+}
+
+.login-feedback__dot {
+  font-size: 22rpx;
+  color: #b7aea7;
 }
 
 ::v-deep(.u-form-item__body__left__content__label) {
