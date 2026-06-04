@@ -208,7 +208,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { onUnload } from "@dcloudio/uni-app";
+import { onHide, onUnload } from "@dcloudio/uni-app";
 import MediaPreviewPopup, { type MediaPreviewAsset } from "@/components/media-preview-popup.vue";
 import { fetchRecommendedTopics, searchTopicOptions } from "@/api/topic";
 import { fetchNearbyLocations } from "@/api/location";
@@ -1323,7 +1323,40 @@ function confirmRemoveMedia(item: MediaItem) {
   });
 }
 
+function dismissTransientUi() {
+  // 关闭可能未关闭的 actionSheet/modal/toast/loading
+  uni.hideToast();
+  uni.hideLoading();
+  // H5 端尝试关闭 actionSheet（uni-app 私有 API）
+  // @ts-ignore
+  if (typeof uni.hideActionSheet === "function") {
+    // @ts-ignore
+    uni.hideActionSheet();
+  }
+
+  // #ifdef H5
+  // H5 兜底：移除残留的 actionSheet/toast 弹层 DOM
+  if (typeof document !== "undefined") {
+    const selectors = [".uni-actionsheet", ".uni-mask", ".uni-toast", ".uni-modal"];
+    selectors.forEach((sel) => {
+      document.querySelectorAll(sel).forEach((node) => node.remove());
+    });
+  }
+  // #endif
+
+  // 关闭媒体预览
+  previewVisible.value = false;
+  // 关闭话题内联面板
+  inlineTopicRange.value = null;
+  inlineTopicSuggestions.value = [];
+}
+
+onHide(() => {
+  dismissTransientUi();
+});
+
 onUnload(() => {
+  dismissTransientUi();
   mediaItems.value.forEach((item) => revokePreviewUrl(item.previewUrl));
   Array.from(taskProgressTimers.keys()).forEach(clearTaskProgressTimer);
   Array.from(taskHideTimers.keys()).forEach(clearTaskHideTimer);

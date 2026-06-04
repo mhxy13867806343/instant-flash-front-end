@@ -25,10 +25,11 @@ type RawTopicResponse =
     };
 
 function pickName(item: unknown): string {
-  if (typeof item === "string") return item;
+  if (typeof item === "string") return item.replace(/^#+/, "").trim();
   if (item && typeof item === "object") {
     const obj = item as ApiTopic;
-    return String(obj.displayName || obj.name || obj.label || obj.value || "");
+    const raw = String(obj.displayName || obj.name || obj.label || obj.value || "");
+    return raw.replace(/^#+/, "").trim();
   }
   return "";
 }
