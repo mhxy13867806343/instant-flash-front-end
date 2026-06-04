@@ -111,6 +111,7 @@ import { useFeed } from "@/hooks/use-feed";
 import { useHomeFeed } from "@/hooks/use-home-feed";
 import { usePagingList } from "@/hooks/use-paging-list";
 import { useTopicSearch } from "@/hooks/use-topic-search";
+import { showShare } from "@/utils/share";
 
 const activeCommentId = ref("");
 const commentDraft = ref("");
@@ -226,24 +227,28 @@ async function submitComment(id: string) {
   }
 }
 
-function handleShare(id: string) {
-  uni.showActionSheet({
-    itemList: ["转发给朋友", "复制链接", "生成海报"],
-    success: async () => {
-      try {
-        await increaseShare(id);
-        uni.showToast({
-          title: "已分享",
-          icon: "none",
-        });
-      } catch (error) {
-        uni.showToast({
-          title: error instanceof Error ? error.message : "分享失败",
-          icon: "none",
-        });
-      }
-    },
-  });
+async function handleShare(id: string) {
+  const post = posts.value.find((item) => item.id === id);
+  if (!post) return;
+  try {
+    await showShare({
+      title: post.author + " 的动态",
+      desc: post.content.slice(0, 60),
+      onShare: async () => {
+        try {
+          await increaseShare(id);
+          uni.showToast({ title: "已分享", icon: "none" });
+        } catch (error) {
+          uni.showToast({
+            title: error instanceof Error ? error.message : "分享失败",
+            icon: "none",
+          });
+        }
+      },
+    });
+  } catch {
+    // 用户取消
+  }
 }
 
 function handleTopicClick(topic: string) {

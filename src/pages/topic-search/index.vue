@@ -58,7 +58,7 @@
         </view>
         <view class="topic-tags">
           <button
-            v-for="item in recommendedTopicOptions"
+            v-for="item in recommendedTopics"
             :key="item"
             class="topic-tag"
             :class="{ 'topic-tag--active': selectedTopics.includes(item) }"
@@ -102,11 +102,13 @@ import { computed, ref, watch } from "vue";
 import { onLoad, type OnLoadOptions } from "@dcloudio/uni-app";
 import ContentEmpty from "@/components/content-empty.vue";
 import PostCard from "@/components/post-card.vue";
-import { recommendedTopicOptions, searchTopicOptions } from "@/api/topic";
+import { fetchRecommendedTopics, searchTopicOptions } from "@/api/topic";
 import { useFeed } from "@/hooks/use-feed";
 import { useTopicSearch } from "@/hooks/use-topic-search";
+import { showShare } from "@/utils/share";
 
 const keyword = ref("");
+const recommendedTopics = ref<string[]>([]);
 const searchResults = ref<string[]>([]);
 const searching = ref(false);
 const selectMode = ref(false);
@@ -122,10 +124,10 @@ const topicSuggestOptions = computed(() => {
   }
 
   if (!normalizedKeyword.value) {
-    return recommendedTopicOptions.slice(0, 8);
+    return recommendedTopics.value;
   }
 
-  return searchResults.value.length ? searchResults.value : recommendedTopicOptions.slice(0, 8);
+  return searchResults.value.length ? searchResults.value : recommendedTopics.value;
 });
 const showSearchEmptyState = computed(() => Boolean(normalizedKeyword.value));
 
@@ -150,6 +152,11 @@ onLoad((options: OnLoadOptions) => {
     .split(",")
     .map((item) => normalizeTopic(item))
     .filter(Boolean);
+
+  // 加载推荐话题（固定前 10）
+  fetchRecommendedTopics(10).then((list) => {
+    recommendedTopics.value = list;
+  }).catch(() => {});
 
   if (queryKeyword) {
     runSearch(queryKeyword);
@@ -221,17 +228,28 @@ function handleLike(id: string) {
   });
 }
 
-function handleShare(id: string) {
-  uni.showActionSheet({
-    itemList: ["转发给朋友", "复制链接", "生成海报"],
-    success: () => {
-      increaseShare(id);
-      uni.showToast({
-        title: "已分享",
-        icon: "none",
-      });
-    },
-  });
+async function handleShare(id: string) {
+  const post = posts.value.find((item) => item.id === id);
+  if (!post) return;
+  try {
+    await showShare({
+      title: post.author + " 的动态",
+      desc: post.content.slice(0, 60),
+      onShare: async () => {
+        try {
+          await increaseShare(id);
+          uni.showToast({ title: "已分享", icon: "none" });
+        } catch (error) {
+          uni.showToast({
+            title: error instanceof Error ? error.message : "分享失败",
+            icon: "none",
+          });
+        }
+      },
+    });
+  } catch {
+    // 用户取消
+  }
 }
 </script>
 

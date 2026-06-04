@@ -19,10 +19,25 @@
     <view v-if="post" class="card-shell detail-comments">
       <text class="section-title">评论区</text>
       <text class="section-desc">{{ commentTip }}</text>
-      <feed-comment-state :count="post.commentList.length" />
-      <button class="detail-comments__open" @tap="openCommentPopup">
-        打开底部评论面板
-      </button>
+      <feed-comment-panel
+        :post="post"
+        :draft="commentDraft"
+        :reply-target-id="replyTarget?.id || ''"
+        :reply-target-name="replyTarget?.author || ''"
+        :show-emoji="showEmoji"
+        :emojis="emojis"
+        :has-more="commentHasMore"
+        :loading-more="commentLoadingMore"
+        @reply="handleInlineReply"
+        @like-comment="handleCommentLike"
+        @expand-replies="handleExpandReplies"
+        @load-more="handleLoadMoreComments"
+        @clear-reply="clearReply"
+        @update:draft="commentDraft = $event"
+        @toggle-emoji="toggleEmoji"
+        @append-emoji="appendEmoji"
+        @submit="submitComment"
+      />
     </view>
 
     <feed-comment-popup
@@ -52,12 +67,13 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import FeedCommentState from "@/components/feed-comment-state.vue";
+import FeedCommentPanel from "@/components/feed-comment-panel.vue";
 import FeedCommentPopup from "@/components/feed-comment-popup.vue";
 import PostCard from "@/components/post-card.vue";
 import type { FeedComment } from "@/mock/post-data";
 import { useFeed } from "@/hooks/use-feed";
 import { useTopicSearch } from "@/hooks/use-topic-search";
+import { showShare } from "@/utils/share";
 
 const postId = ref("post-001");
 const focusType = ref("");
@@ -152,24 +168,27 @@ async function submitComment() {
   }
 }
 
-function handleShare() {
-  uni.showActionSheet({
-    itemList: ["转发给朋友", "复制链接", "生成海报"],
-    success: async () => {
-      try {
-        await increaseShare(postId.value);
-        uni.showToast({
-          title: "已分享",
-          icon: "none",
-        });
-      } catch (error) {
-        uni.showToast({
-          title: error instanceof Error ? error.message : "分享失败",
-          icon: "none",
-        });
-      }
-    },
-  });
+async function handleShare() {
+  if (!post.value) return;
+  try {
+    await showShare({
+      title: post.value.author + " 的动态",
+      desc: post.value.content.slice(0, 60),
+      onShare: async () => {
+        try {
+          await increaseShare(postId.value);
+          uni.showToast({ title: "已分享", icon: "none" });
+        } catch (error) {
+          uni.showToast({
+            title: error instanceof Error ? error.message : "分享失败",
+            icon: "none",
+          });
+        }
+      },
+    });
+  } catch {
+    // 用户取消
+  }
 }
 
 function scrollToComments() {
@@ -189,6 +208,12 @@ function closeCommentPopup() {
 
 function replyToComment(comment: FeedComment) {
   replyTarget.value = comment;
+}
+
+// 内联评论列表点击回复时，自动打开底部评论弹窗以便输入
+function handleInlineReply(comment: FeedComment) {
+  replyTarget.value = comment;
+  openCommentPopup();
 }
 
 function handleCommentLike(comment: FeedComment) {
@@ -265,12 +290,27 @@ function handleTopicClick(topic: string) {
   gap: 24rpx;
 }
 
-.detail-card,
+.detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  padding: 32rpx 28rpx;
+}
+
 .detail-comments {
   display: flex;
   flex-direction: column;
   gap: 24rpx;
   padding: 32rpx 28rpx;
+}
+
+.detail-comments :deep(.comment-panel) {
+  height: auto;
+}
+
+.detail-comments :deep(.comment-panel__list-scroll) {
+  flex: none;
+  max-height: 1200rpx;
 }
 
 .detail-note {

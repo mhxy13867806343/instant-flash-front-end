@@ -207,10 +207,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { onUnload } from "@dcloudio/uni-app";
 import MediaPreviewPopup, { type MediaPreviewAsset } from "@/components/media-preview-popup.vue";
-import { recommendedTopicOptions, searchTopicOptions } from "@/api/topic";
+import { fetchRecommendedTopics, searchTopicOptions } from "@/api/topic";
 import { useAuth } from "@/hooks/use-auth";
 
 type MediaItem = {
@@ -252,7 +252,7 @@ type MediaTask = {
 
 const content = ref("");
 const { isLoggedIn, ensureLogin } = useAuth();
-const topics = recommendedTopicOptions;
+const topics = ref<string[]>([]);
 const selectedTopics = ref<string[]>(["同城发现"]);
 const mediaItems = ref<MediaItem[]>([]);
 const mediaTasks = ref<MediaTask[]>([]);
@@ -267,6 +267,13 @@ const visibilityOptions = ["公开", "仅好友可见", "仅自己可见"];
 const location = ref(locationOptions[0]);
 const visibility = ref(visibilityOptions[0]);
 const showInlineTopicPanel = computed(() => inlineTopicRange.value !== null);
+
+// 进入页面时拉取推荐话题
+onMounted(() => {
+  fetchRecommendedTopics(10).then((list) => {
+    topics.value = list;
+  }).catch(() => {});
+});
 
 const videoCount = computed(() => mediaItems.value.filter((item) => item.type === "video").length);
 const imageCount = computed(() => mediaItems.value.filter((item) => item.type === "image").length);
@@ -867,7 +874,7 @@ async function updateInlineTopicSuggestions(value: string, cursor: number) {
   const keyword = (matchedToken[2] || "").trim();
   if (!keyword) {
     inlineTopicLoading.value = false;
-    inlineTopicSuggestions.value = recommendedTopicOptions.slice(0, 8);
+    inlineTopicSuggestions.value = topics.value.slice(0, 8);
     return;
   }
 
