@@ -140,11 +140,15 @@ export function normalizeCommentResponse(
 export function mapApiPostToFeedPost(post: ApiPost, commentList: FeedComment[] = []): FeedPost {
   const locationParts = [post.city, post.district, post.location].filter(Boolean);
   const locationText = locationParts.length ? locationParts.join("·") : "";
-  // 合并 images 和 videos 成统一的 media 数组
-  const imageList = Array.isArray(post.images) ? post.images.map(mapMediaItem).filter(Boolean) : [];
-  const videoList = Array.isArray(post.videos) ? post.videos.map(mapMediaItem).filter(Boolean) : [];
-  const mediaList = Array.isArray(post.media) ? post.media.map(mapMediaItem).filter(Boolean) : [];
-  const media = [...imageList, ...videoList, ...mediaList];
+  // 优先使用后端合并好的 media 数组，没有再退化到 images + videos 拼接
+  let media: string[] = [];
+  if (Array.isArray(post.media) && post.media.length) {
+    media = post.media.map(mapMediaItem).filter(Boolean);
+  } else {
+    const imageList = Array.isArray(post.images) ? post.images.map(mapMediaItem).filter(Boolean) : [];
+    const videoList = Array.isArray(post.videos) ? post.videos.map(mapMediaItem).filter(Boolean) : [];
+    media = [...imageList, ...videoList];
+  }
 
   return {
     id: post.postId,
