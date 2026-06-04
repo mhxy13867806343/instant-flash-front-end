@@ -87,6 +87,10 @@ export async function httpRequest<T>(url: string, options: RequestOptions = {}) 
     if (bodyCode >= 400) {
       throw new Error(extractErrorMessage(response.data));
     }
+    // 如果有标准包装 {code, message, data}，自动解包 data
+    if (bodyCode === 200 && "data" in body) {
+      return body.data as T;
+    }
   }
 
   return response.data as T;
