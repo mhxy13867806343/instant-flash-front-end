@@ -65,22 +65,22 @@ export function createFeedShare(id: string) {
   return http.post(`/api/posts/${id}/share`, {});
 }
 
-export type PostImageItem = {
-  url: string;
-  name?: string;
-  type?: string;
-};
-
 export type CreatePostPayload = {
   content: string;
-  images?: PostImageItem[];
+  images?: string[];
   location?: string;
   province?: string;
   city?: string;
   district?: string;
+  visibility?: "public" | "friends" | "private";
+  status?: "online" | "draft";
   topics?: string[];
 };
 
 export function createPost(payload: CreatePostPayload) {
-  return http.post<ApiPost>("/api/posts", payload);
+  return http.post<ApiPost>("/api/posts", { status: "online", ...payload });
+}
+
+export function saveDraftPost(payload: CreatePostPayload) {
+  return http.post<ApiPost>("/api/posts", { ...payload, status: "draft" });
 }

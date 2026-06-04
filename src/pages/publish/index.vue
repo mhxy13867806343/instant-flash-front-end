@@ -223,7 +223,7 @@ import { onHide, onUnload } from "@dcloudio/uni-app";
 import MediaPreviewPopup, { type MediaPreviewAsset } from "@/components/media-preview-popup.vue";
 import { fetchRecommendedTopics, searchTopicOptions } from "@/api/topic";
 import { fetchNearbyLocations, type ApiLocation } from "@/api/location";
-import { createPost } from "@/api/feed";
+import { createPost, saveDraftPost } from "@/api/feed";
 import { uploadMedia } from "@/api/upload";
 import { API_BASE_URL } from "@/config/env";
 import { useAuth } from "@/hooks/use-auth";
@@ -284,6 +284,12 @@ const inlineTopicRange = ref<{ start: number; end: number } | null>(null);
 const locationOptions = ref<string[]>([]);
 const locationItems = ref<ApiLocation[]>([]);
 const visibilityOptions = ["公开", "仅好友可见", "仅自己可见"];
+
+function mapVisibility(value: string): "public" | "friends" | "private" {
+  if (value === "仅好友可见") return "friends";
+  if (value === "仅自己可见") return "private";
+  return "public";
+}
 const location = ref("");
 const visibility = ref(visibilityOptions[0]);
 const locationSheetVisible = ref(false);
@@ -1419,7 +1425,7 @@ onUnload(() => {
   canceledTaskIds.clear();
 });
 
-function saveDraft() {
+async function saveDraft() {
   if (!ensurePublishLogin("登录后才可以保存发布草稿，是否现在去登录？")) {
     return;
   }
@@ -1432,10 +1438,49 @@ function saveDraft() {
     return;
   }
 
-  uni.showToast({
-    title: "草稿已保存",
-    icon: "none",
-  });
+  if (!content.value.trim() && !mediaItems.value.length) {
+    uni.showToast({
+      title: "正文或图片至少填写其一才能存草稿",
+      icon: "none",
+    });
+    return;
+  }
+
+  const matchedLocation = locationItems.value.find(
+    (item) => (item.displayName || item.name || "") === location.value
+  );
+
+  const stripBase = (url: string) => {
+    const base = (API_BASE_URL || "").replace(/\/$/, "");
+    if (base && url.startsWith(base)) {
+      return url.slice(base.length);
+    }
+    return url;
+  };
+
+  const imageItems = mediaItems.value.filter((item) => item.type === "image" && item.uploadedUrl);
+
+  uni.showLoading({ title: "保存草稿中...", mask: true });
+  try {
+    await saveDraftPost({
+      content: content.value.trim(),
+      images: imageItems.map((item) => stripBase(item.uploadedUrl || "")),
+      location: location.value || undefined,
+      province: matchedLocation?.province || undefined,
+      city: matchedLocation?.city || undefined,
+      district: matchedLocation?.district || undefined,
+      visibility: mapVisibility(visibility.value),
+      topics: selectedTopics.value,
+    });
+    uni.hideLoading();
+    uni.showToast({ title: "草稿已保存", icon: "none" });
+  } catch (error) {
+    uni.hideLoading();
+    uni.showToast({
+      title: error instanceof Error ? error.message : "保存失败，请重试",
+      icon: "none",
+    });
+  }
 }
 
 function selectLocation() {
@@ -1520,15 +1565,12 @@ async function submit() {
     // 图片在选择时已上传完成，这里直接拿 uploadedUrl
     await createPost({
       content: content.value.trim(),
-      images: imageItems.map((item) => ({
-        url: stripBase(item.uploadedUrl || ""),
-        name: item.uploadedName || item.label,
-        type: item.uploadedType || item.type,
-      })),
+      images: imageItems.map((item) => stripBase(item.uploadedUrl || "")),
       location: location.value || undefined,
       province: matchedLocation?.province || undefined,
       city: matchedLocation?.city || undefined,
       district: matchedLocation?.district || undefined,
+      visibility: mapVisibility(visibility.value),
       topics: selectedTopics.value,
     });
     uni.hideLoading();
