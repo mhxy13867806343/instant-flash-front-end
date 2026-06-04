@@ -1324,7 +1324,7 @@ function confirmRemoveMedia(item: MediaItem) {
 }
 
 function dismissTransientUi() {
-  // 关闭可能未关闭的 actionSheet/modal/toast/loading
+  // 关闭可能未关闭的 toast/loading
   uni.hideToast();
   uni.hideLoading();
   // H5 端尝试关闭 actionSheet（uni-app 私有 API）
@@ -1335,11 +1335,13 @@ function dismissTransientUi() {
   }
 
   // #ifdef H5
-  // H5 兜底：移除残留的 actionSheet/toast 弹层 DOM
+  // H5 兜底：把残留的 actionSheet/toast 弹层隐藏（不删除节点，下次还能正常打开）
   if (typeof document !== "undefined") {
     const selectors = [".uni-actionsheet", ".uni-mask", ".uni-toast", ".uni-modal"];
     selectors.forEach((sel) => {
-      document.querySelectorAll(sel).forEach((node) => node.remove());
+      document.querySelectorAll<HTMLElement>(sel).forEach((node) => {
+        node.style.display = "none";
+      });
     });
   }
   // #endif
