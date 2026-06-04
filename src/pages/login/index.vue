@@ -81,6 +81,10 @@
           <text class="login-agreements__dot">与</text>
           <button class="login-agreements__item" @tap="goAgreement('/pages/user-agreement/index')">用户协议</button>
         </view>
+
+        <view class="login-feedback">
+          <button class="login-feedback__btn" @tap="goFeedback">遇到问题？意见反馈</button>
+        </view>
       </view>
     </view>
   </view>
@@ -158,6 +162,10 @@ function switchMode(nextMode: LoginMode) {
 
 function goAgreement(url: string) {
   uni.navigateTo({ url });
+}
+
+function goFeedback() {
+  uni.navigateTo({ url: "/pages/feedback/index" });
 }
 
 function sanitizePhoneInput(value: string) {
@@ -475,6 +483,23 @@ async function finishLogin() {
 .login-agreements__item {
   color: #5f514a;
   text-decoration: underline;
+}
+
+.login-feedback {
+  display: flex;
+  justify-content: center;
+  padding-top: 4rpx;
+}
+
+.login-feedback__btn {
+  background: transparent;
+  font-size: 22rpx;
+  color: var(--brand-primary);
+  line-height: 1.6;
+}
+
+.login-feedback__btn::after {
+  border: none;
 }
 
 ::v-deep(.u-form-item__body__left__content__label) {
