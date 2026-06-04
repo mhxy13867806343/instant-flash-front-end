@@ -99,8 +99,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import { onHide, onMounted, onUnload } from "@dcloudio/uni-app";
+import { computed, onMounted, ref, watch } from "vue";
+import { onHide, onUnload } from "@dcloudio/uni-app";
 import ContentEmpty from "@/components/content-empty.vue";
 import FeedCommentPopup from "@/components/feed-comment-popup.vue";
 import InstantTabbar from "@/components/instant-tabbar.vue";
