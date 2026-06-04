@@ -224,6 +224,7 @@ import MediaPreviewPopup, { type MediaPreviewAsset } from "@/components/media-pr
 import { fetchRecommendedTopics, searchTopicOptions } from "@/api/topic";
 import { fetchNearbyLocations, type ApiLocation } from "@/api/location";
 import { createPost } from "@/api/feed";
+import { uploadMediaList } from "@/api/upload";
 import { API_BASE_URL } from "@/config/env";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -1472,19 +1473,28 @@ async function submit() {
     return url;
   };
 
-  const images = mediaItems.value
-    .filter((item) => item.type === "image" && item.previewUrl)
-    .map((item) => ({
-      url: stripBase(item.previewUrl),
-      name: item.label,
-      type: item.type,
-    }));
+  const imageItems = mediaItems.value.filter((item) => item.type === "image" && item.filePath);
 
-  uni.showLoading({ title: "发布中...", mask: true });
+  uni.showLoading({ title: imageItems.length ? "上传图片中..." : "发布中...", mask: true });
+
   try {
+    // 1. 先把本地图片上传到后端，拿到真实 url
+    const uploaded = imageItems.length
+      ? await uploadMediaList(
+          imageItems.map((item) => item.filePath || item.previewUrl),
+          imageItems.map((item) => item.label)
+        )
+      : [];
+
+    // 2. 调用发布接口
+    uni.showLoading({ title: "发布中...", mask: true });
     await createPost({
       content: content.value.trim(),
-      images,
+      images: uploaded.map((item) => ({
+        url: stripBase(item.url),
+        name: item.name,
+        type: item.type || "image",
+      })),
       location: location.value || undefined,
       province: matchedLocation?.province || undefined,
       city: matchedLocation?.city || undefined,
@@ -1493,6 +1503,10 @@ async function submit() {
     });
     uni.hideLoading();
     uni.showToast({ title: "发布成功", icon: "success" });
+
+    // 通知首页刷新
+    uni.$emit("post-published");
+
     setTimeout(() => {
       uni.navigateBack();
     }, 800);
