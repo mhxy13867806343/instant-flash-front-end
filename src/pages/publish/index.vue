@@ -222,7 +222,9 @@ import { computed, onMounted, ref } from "vue";
 import { onHide, onUnload } from "@dcloudio/uni-app";
 import MediaPreviewPopup, { type MediaPreviewAsset } from "@/components/media-preview-popup.vue";
 import { fetchRecommendedTopics, searchTopicOptions } from "@/api/topic";
-import { fetchNearbyLocations } from "@/api/location";
+import { fetchNearbyLocations, type ApiLocation } from "@/api/location";
+import { createPost } from "@/api/feed";
+import { API_BASE_URL } from "@/config/env";
 import { useAuth } from "@/hooks/use-auth";
 
 type MediaItem = {
@@ -275,6 +277,7 @@ const inlineTopicSuggestions = ref<string[]>([]);
 const inlineTopicLoading = ref(false);
 const inlineTopicRange = ref<{ start: number; end: number } | null>(null);
 const locationOptions = ref<string[]>([]);
+const locationItems = ref<ApiLocation[]>([]);
 const visibilityOptions = ["公开", "仅好友可见", "仅自己可见"];
 const location = ref("");
 const visibility = ref(visibilityOptions[0]);
@@ -305,9 +308,10 @@ async function loadNearbyLocations() {
     });
 
     const params = pos ? { longitude: pos.longitude, latitude: pos.latitude, limit: 10 } : { limit: 10 };
-    const { displayList } = await fetchNearbyLocations(params);
+    const { raw, displayList } = await fetchNearbyLocations(params);
     if (displayList.length) {
       locationOptions.value = displayList;
+      locationItems.value = raw;
       if (!location.value) {
         location.value = displayList[0];
       }
@@ -1433,7 +1437,7 @@ function onVisibilityPick(index: number) {
   });
 }
 
-function submit() {
+async function submit() {
   if (!ensurePublishLogin("登录后才可以发布动态，是否现在去登录？")) {
     return;
   }
@@ -1454,10 +1458,51 @@ function submit() {
     return;
   }
 
-  uni.showToast({
-    title: "演示版发布成功",
-    icon: "success",
-  });
+  // 找到当前选中位置对应的原始数据，提取 province/city/district
+  const matchedLocation = locationItems.value.find(
+    (item) => (item.displayName || item.name || "") === location.value
+  );
+
+  // 把 url 里的域名前缀去掉，只保留相对路径
+  const stripBase = (url: string) => {
+    const base = (API_BASE_URL || "").replace(/\/$/, "");
+    if (base && url.startsWith(base)) {
+      return url.slice(base.length);
+    }
+    return url;
+  };
+
+  const images = mediaItems.value
+    .filter((item) => item.type === "image" && item.previewUrl)
+    .map((item) => ({
+      url: stripBase(item.previewUrl),
+      name: item.label,
+      type: item.type,
+    }));
+
+  uni.showLoading({ title: "发布中...", mask: true });
+  try {
+    await createPost({
+      content: content.value.trim(),
+      images,
+      location: location.value || undefined,
+      province: matchedLocation?.province || undefined,
+      city: matchedLocation?.city || undefined,
+      district: matchedLocation?.district || undefined,
+      topics: selectedTopics.value,
+    });
+    uni.hideLoading();
+    uni.showToast({ title: "发布成功", icon: "success" });
+    setTimeout(() => {
+      uni.navigateBack();
+    }, 800);
+  } catch (error) {
+    uni.hideLoading();
+    uni.showToast({
+      title: error instanceof Error ? error.message : "发布失败，请重试",
+      icon: "none",
+    });
+  }
 }
 </script>
 

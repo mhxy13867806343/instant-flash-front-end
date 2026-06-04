@@ -64,3 +64,23 @@ export function toggleFeedLike(id: string) {
 export function createFeedShare(id: string) {
   return http.post(`/api/posts/${id}/share`, {});
 }
+
+export type PostImageItem = {
+  url: string;
+  name?: string;
+  type?: string;
+};
+
+export type CreatePostPayload = {
+  content: string;
+  images?: PostImageItem[];
+  location?: string;
+  province?: string;
+  city?: string;
+  district?: string;
+  topics?: string[];
+};
+
+export function createPost(payload: CreatePostPayload) {
+  return http.post<ApiPost>("/api/posts", payload);
+}
