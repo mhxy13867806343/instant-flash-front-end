@@ -87,6 +87,12 @@
       }
     },
     {
+      "path": "pages/repositories/index",
+      "style": {
+        "navigationBarTitleText": "项目仓库"
+      }
+    },
+    {
       "path": "pages/my-posts/index",
       "style": {
         "navigationBarTitleText": "我的发布"

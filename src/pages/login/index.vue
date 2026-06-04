@@ -87,6 +87,8 @@
           <text class="login-feedback__dot">·</text>
           <button class="login-feedback__btn" @tap="goPage('/pages/about-project/index')">项目介绍</button>
           <text class="login-feedback__dot">·</text>
+          <button class="login-feedback__btn" @tap="goPage('/pages/repositories/index')">项目仓库</button>
+          <text class="login-feedback__dot">·</text>
           <button class="login-feedback__btn" @tap="goPage('/pages/about-author/index')">关于作者</button>
         </view>
       </view>
