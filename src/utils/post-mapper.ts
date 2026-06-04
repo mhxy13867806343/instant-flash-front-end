@@ -140,6 +140,12 @@ export function normalizeCommentResponse(
 export function mapApiPostToFeedPost(post: ApiPost, commentList: FeedComment[] = []): FeedPost {
   const locationParts = [post.city, post.district, post.location].filter(Boolean);
   const locationText = locationParts.length ? locationParts.join("·") : "";
+  // 合并 images 和 videos 成统一的 media 数组
+  const imageList = Array.isArray(post.images) ? post.images.map(mapMediaItem).filter(Boolean) : [];
+  const videoList = Array.isArray(post.videos) ? post.videos.map(mapMediaItem).filter(Boolean) : [];
+  const mediaList = Array.isArray(post.media) ? post.media.map(mapMediaItem).filter(Boolean) : [];
+  const media = [...imageList, ...videoList, ...mediaList];
+
   return {
     id: post.postId,
     authorId: post.userId,
@@ -149,7 +155,7 @@ export function mapApiPostToFeedPost(post: ApiPost, commentList: FeedComment[] =
     location: locationText,
     content: post.content,
     topics: Array.isArray(post.topics) ? post.topics : [],
-    media: Array.isArray(post.images) ? post.images.map(mapMediaItem).filter(Boolean) : [],
+    media,
     likes: post.likeCount,
     comments: post.commentCount,
     shares: post.shareCount,

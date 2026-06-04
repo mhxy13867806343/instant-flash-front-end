@@ -60,6 +60,8 @@ export type ApiPost = {
   avatar?: string | null;
   content: string;
   images: unknown[];
+  videos?: unknown[] | null;
+  media?: unknown[] | null;
   location?: string | null;
   province?: string | null;
   city?: string | null;
@@ -69,6 +71,7 @@ export type ApiPost = {
   commentCount: number;
   shareCount: number;
   status: string;
+  visibility?: string | null;
   isLiked?: boolean;
   isOwner?: boolean;
   canEdit?: boolean;

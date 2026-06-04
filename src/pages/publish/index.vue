@@ -1458,13 +1458,20 @@ async function saveDraft() {
     return url;
   };
 
-  const imageItems = mediaItems.value.filter((item) => item.uploadedUrl);
+  const uploaded = mediaItems.value.filter((item) => item.uploadedUrl);
+  const imageUrls = uploaded
+    .filter((item) => item.type === "image")
+    .map((item) => stripBase(item.uploadedUrl || ""));
+  const videoUrls = uploaded
+    .filter((item) => item.type === "video")
+    .map((item) => stripBase(item.uploadedUrl || ""));
 
   uni.showLoading({ title: "保存草稿中...", mask: true });
   try {
     await saveDraftPost({
       content: content.value.trim(),
-      images: imageItems.map((item) => stripBase(item.uploadedUrl || "")),
+      images: imageUrls,
+      videos: videoUrls,
       location: location.value || undefined,
       province: matchedLocation?.province || undefined,
       city: matchedLocation?.city || undefined,
@@ -1557,15 +1564,22 @@ async function submit() {
     return url;
   };
 
-  const imageItems = mediaItems.value.filter((item) => item.uploadedUrl);
+  const uploaded = mediaItems.value.filter((item) => item.uploadedUrl);
+  const imageUrls = uploaded
+    .filter((item) => item.type === "image")
+    .map((item) => stripBase(item.uploadedUrl || ""));
+  const videoUrls = uploaded
+    .filter((item) => item.type === "video")
+    .map((item) => stripBase(item.uploadedUrl || ""));
 
   uni.showLoading({ title: "发布中...", mask: true });
 
   try {
-    // 图片在选择时已上传完成，这里直接拿 uploadedUrl
+    // 图片/视频在选择时已上传完成，这里直接拿 uploadedUrl
     await createPost({
       content: content.value.trim(),
-      images: imageItems.map((item) => stripBase(item.uploadedUrl || "")),
+      images: imageUrls,
+      videos: videoUrls,
       location: location.value || undefined,
       province: matchedLocation?.province || undefined,
       city: matchedLocation?.city || undefined,

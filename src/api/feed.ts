@@ -68,6 +68,7 @@ export function createFeedShare(id: string) {
 export type CreatePostPayload = {
   content: string;
   images?: string[];
+  videos?: string[];
   location?: string;
   province?: string;
   city?: string;
