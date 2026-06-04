@@ -224,7 +224,7 @@ import MediaPreviewPopup, { type MediaPreviewAsset } from "@/components/media-pr
 import { fetchRecommendedTopics, searchTopicOptions } from "@/api/topic";
 import { fetchNearbyLocations, type ApiLocation } from "@/api/location";
 import { createPost } from "@/api/feed";
-import { uploadMediaList } from "@/api/upload";
+import { uploadMedia } from "@/api/upload";
 import { API_BASE_URL } from "@/config/env";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -237,6 +237,10 @@ type MediaItem = {
   file?: File;
   sizeBytes: number;
   compressionText: string;
+  /** 上传后服务器返回的真实 url（带或不带域名） */
+  uploadedUrl?: string;
+  uploadedName?: string;
+  uploadedType?: string;
 };
 
 type MediaSlot =
@@ -480,6 +484,29 @@ function animateTaskProgress(taskId: number, target: number, detail: string, sta
 async function simulateUploadProgress(taskId: number) {
   animateTaskProgress(taskId, 92, "上传处理中", "上传处理中");
   await new Promise((resolve) => setTimeout(resolve, 520));
+}
+
+async function realUploadProgress(
+  taskId: number,
+  prepared: MediaItem
+): Promise<{ url: string; name?: string; type?: string } | null> {
+  animateTaskProgress(taskId, 92, "上传中", "上传中");
+  try {
+    const filePath = prepared.filePath || prepared.previewUrl;
+    if (!filePath) return null;
+    const result = await uploadMedia(filePath, prepared.label);
+    return {
+      url: result.url,
+      name: result.name,
+      type: result.type,
+    };
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "上传失败",
+      icon: "none",
+    });
+    return null;
+  }
 }
 
 function finishMediaTask(taskId: number, detail: string) {
@@ -1126,15 +1153,27 @@ async function appendMediaFromFiles(files: PickedMediaFile[]) {
       statusText: "压缩完成",
       progress: Math.max(60, mediaTasks.value.find((item) => item.id === taskId)?.progress || 0),
     });
-    await simulateUploadProgress(taskId);
+
+    // 真实上传到后端
+    const uploadResult = await realUploadProgress(taskId, prepared);
     if (canceledTaskIds.has(taskId)) {
       discardPreparedMedia(prepared);
       continue;
     }
+    if (!uploadResult) {
+      // 上传失败已经提示过，跳过这条
+      discardPreparedMedia(prepared);
+      continue;
+    }
 
-    nextItems.push(prepared);
+    nextItems.push({
+      ...prepared,
+      uploadedUrl: uploadResult.url,
+      uploadedName: uploadResult.name,
+      uploadedType: uploadResult.type,
+    });
     addedCount += 1;
-    finishMediaTask(taskId, "已完成");
+    finishMediaTask(taskId, "上传完成");
   }
 
   mediaItems.value = nextItems;
@@ -1473,27 +1512,18 @@ async function submit() {
     return url;
   };
 
-  const imageItems = mediaItems.value.filter((item) => item.type === "image" && item.filePath);
+  const imageItems = mediaItems.value.filter((item) => item.type === "image" && item.uploadedUrl);
 
-  uni.showLoading({ title: imageItems.length ? "上传图片中..." : "发布中...", mask: true });
+  uni.showLoading({ title: "发布中...", mask: true });
 
   try {
-    // 1. 先把本地图片上传到后端，拿到真实 url
-    const uploaded = imageItems.length
-      ? await uploadMediaList(
-          imageItems.map((item) => item.filePath || item.previewUrl),
-          imageItems.map((item) => item.label)
-        )
-      : [];
-
-    // 2. 调用发布接口
-    uni.showLoading({ title: "发布中...", mask: true });
+    // 图片在选择时已上传完成，这里直接拿 uploadedUrl
     await createPost({
       content: content.value.trim(),
-      images: uploaded.map((item) => ({
-        url: stripBase(item.url),
-        name: item.name,
-        type: item.type || "image",
+      images: imageItems.map((item) => ({
+        url: stripBase(item.uploadedUrl || ""),
+        name: item.uploadedName || item.label,
+        type: item.uploadedType || item.type,
       })),
       location: location.value || undefined,
       province: matchedLocation?.province || undefined,
