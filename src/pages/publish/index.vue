@@ -1068,11 +1068,22 @@ function openTopicSearchPage() {
     return;
   }
 
+  // 注册一次性的话题选择监听（兼容 H5 和小程序）
+  const handler = ({ topic }: { topic: string }) => {
+    if (topic) toggleTopic(topic);
+  };
+  uni.$once("topic-selected", handler);
+
   uni.navigateTo({
     url: `/pages/topic-search/index?select=1&selected=${encodeURIComponent(selectedTopics.value.join(","))}`,
     success: (res) => {
-      res.eventChannel.once("topic-selected", ({ topic }: { topic: string }) => {
-        toggleTopic(topic);
+      // 同时注册 eventChannel（小程序原生路径）
+      res.eventChannel?.once?.("topic-selected", ({ topic }: { topic: string }) => {
+        if (topic) {
+          // 防止双重触发：移除全局监听
+          uni.$off("topic-selected", handler);
+          toggleTopic(topic);
+        }
       });
     },
   });

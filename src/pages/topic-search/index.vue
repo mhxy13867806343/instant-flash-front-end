@@ -197,10 +197,11 @@ function handleTopicTap(topic: string) {
   }
 
   if (selectMode.value) {
+    // 用 uni 全局事件总线，跨平台兼容（H5、小程序都可用）
+    uni.$emit("topic-selected", { topic: normalizedTopic });
+    // 同时尝试 eventChannel（小程序原生）
     const eventChannel = uni.getOpenerEventChannel?.();
-    eventChannel?.emit("topic-selected", {
-      topic: normalizedTopic,
-    });
+    eventChannel?.emit?.("topic-selected", { topic: normalizedTopic });
     uni.navigateBack();
     return;
   }
