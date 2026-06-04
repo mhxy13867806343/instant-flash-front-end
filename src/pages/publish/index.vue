@@ -211,6 +211,7 @@ import { computed, onMounted, ref } from "vue";
 import { onUnload } from "@dcloudio/uni-app";
 import MediaPreviewPopup, { type MediaPreviewAsset } from "@/components/media-preview-popup.vue";
 import { fetchRecommendedTopics, searchTopicOptions } from "@/api/topic";
+import { fetchNearbyLocations } from "@/api/location";
 import { useAuth } from "@/hooks/use-auth";
 
 type MediaItem = {
@@ -262,18 +263,44 @@ const previewIndex = ref(0);
 const inlineTopicSuggestions = ref<string[]>([]);
 const inlineTopicLoading = ref(false);
 const inlineTopicRange = ref<{ start: number; end: number } | null>(null);
-const locationOptions = ["杭州·滨江天街", "杭州·湖滨银泰", "杭州·运河天地", "上海·新天地"];
+const locationOptions = ref<string[]>([]);
 const visibilityOptions = ["公开", "仅好友可见", "仅自己可见"];
-const location = ref(locationOptions[0]);
+const location = ref("");
 const visibility = ref(visibilityOptions[0]);
 const showInlineTopicPanel = computed(() => inlineTopicRange.value !== null);
 
-// 进入页面时拉取推荐话题
+// 进入页面时拉取推荐话题 + 附近位置
 onMounted(() => {
   fetchRecommendedTopics(10).then((list) => {
     topics.value = list;
   }).catch(() => {});
+
+  loadNearbyLocations();
 });
+
+async function loadNearbyLocations() {
+  try {
+    // 获取当前定位经纬度
+    const pos = await new Promise<{ longitude: number; latitude: number } | null>((resolve) => {
+      uni.getLocation({
+        type: "wgs84",
+        success: (res) => resolve({ longitude: res.longitude, latitude: res.latitude }),
+        fail: () => resolve(null),
+      });
+    });
+
+    const params = pos ? { longitude: pos.longitude, latitude: pos.latitude, limit: 10 } : { limit: 10 };
+    const { displayList } = await fetchNearbyLocations(params);
+    if (displayList.length) {
+      locationOptions.value = displayList;
+      if (!location.value) {
+        location.value = displayList[0];
+      }
+    }
+  } catch {
+    // 接口失败时不弹错误，保持空列表
+  }
+}
 
 const videoCount = computed(() => mediaItems.value.filter((item) => item.type === "video").length);
 const imageCount = computed(() => mediaItems.value.filter((item) => item.type === "image").length);
@@ -1327,10 +1354,16 @@ function selectLocation() {
     return;
   }
 
+  if (!locationOptions.value.length) {
+    uni.showToast({ title: "正在获取附近位置，请稍后", icon: "none" });
+    loadNearbyLocations();
+    return;
+  }
+
   uni.showActionSheet({
-    itemList: locationOptions,
+    itemList: locationOptions.value,
     success: ({ tapIndex }) => {
-      location.value = locationOptions[tapIndex] || location.value;
+      location.value = locationOptions.value[tapIndex] || location.value;
       uni.showToast({
         title: `已切换到${location.value}`,
         icon: "none",
